@@ -22,3 +22,13 @@ ENV/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
+# Runtime data — session checkpoints (SQLite)
+data/
+
+# Personal memory — contains private user info
+memory/
+!memory/persona.json.example
+
+# macOS
+.DS_Store
+
