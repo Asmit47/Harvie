@@ -1,5 +1,6 @@
 python-dotenv
 mem0ai
+supermemory
 langchain-core
 langgraph
 langchain-nvidia-ai-endpoints
