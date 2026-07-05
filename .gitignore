@@ -22,13 +22,13 @@ ENV/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# Runtime data — session checkpoints (SQLite)
+# Runtime data - session checkpoints (SQLite)
 data/
 
-# Personal memory — contains private user info
+# Personal memory at the old root location contains private user info.
+# The packaged nexus/memory/persona.json is intentionally tracked.
 memory/
 !memory/persona.json.example
 
 # macOS
 .DS_Store
-
