@@ -1,0 +1,23 @@
+{
+  "name": "Your Name",
+  "role": "Independent builder",
+  "current_projects": [
+    "Sample Project A",
+    "Sample Project B"
+  ],
+  "long_term_goals": [
+    "Ship a useful product",
+    "Build a strong portfolio"
+  ],
+  "motivations": "Wants direct feedback and clear next steps.",
+  "working_style": "Prefers short iterations, concrete checklists, and fast validation.",
+  "decision_making_style": "Wants a clear recommendation with tradeoffs called out.",
+  "communication_preferences": "Concise, action-oriented, and low-fluff.",
+  "tools": [
+    "VS Code",
+    "GitHub",
+    "Notion"
+  ],
+  "timezone": "UTC",
+  "custom_notes": "Replace this example with your own persona details."
+}

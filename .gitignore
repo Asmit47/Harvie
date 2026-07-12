@@ -25,10 +25,12 @@ ENV/
 # Runtime data - session checkpoints (SQLite)
 data/
 
-# Personal memory at the old root location contains private user info.
+# Personal memory is ignored by default.
 # The packaged nexus/memory/persona.json is intentionally tracked.
 memory/
-!memory/persona.json.example
+!nexus/memory/
+!nexus/memory/persona.json
+!nexus/memory/persona.json.example
 
 # macOS
 .DS_Store
