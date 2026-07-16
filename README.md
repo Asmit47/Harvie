@@ -9,13 +9,19 @@ Nexus is a LangGraph business assistant with three memory tiers:
 ## Setup
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Fill in `NVIDIA_API_KEY` in `.env`. `MEM0_API_KEY` and `SUPERMEMORY_API_KEY` are optional; those tiers are disabled when the keys are missing. The default NVIDIA model is `z-ai/glm5`, which is recognized as tool-capable by the current LangChain NVIDIA profile data.
+Fill in `NVIDIA_API_KEY` in `.env` when using NVIDIA hosted endpoints. `MEM0_API_KEY` and `SUPERMEMORY_API_KEY` are optional; those tiers are disabled when the keys are missing. The default NVIDIA model is `z-ai/glm-5.2`.
+
+For hosted NVIDIA endpoints, leave `NVIDIA_BASE_URL` empty. For a self-hosted NVIDIA NIM endpoint, set `NVIDIA_BASE_URL` to the OpenAI-compatible root URL; `NVIDIA_API_KEY` is only needed if that endpoint requires bearer auth.
+
+```env
+NVIDIA_BASE_URL=http://localhost:8000/v1
+```
 
 ## Run The API
 

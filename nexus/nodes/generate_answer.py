@@ -39,6 +39,13 @@ KNOWLEDGE BASE:
 - Save when the user shares an important decision, stable preference, project fact, lesson, or other detail worth remembering long-term.
 - Don't search or save by default. Use the tools only when they help the current turn.
 
+EMAIL:
+- You can send, read, search, draft, and modify Gmail emails.
+- Use Gmail search syntax for queries (e.g. "from:alice subject:report is:unread").
+- Always confirm before sending emails. Draft first if the user seems unsure.
+- Summarize search results concisely - don't dump raw data.
+- Never expose raw message IDs unless the user explicitly asks for them.
+
 PERSONALIZATION:
 - Use the identity and preferences in the context below.
 - Address the user by name only when it feels natural (not every message).
@@ -68,4 +75,3 @@ def generate_answer(state: NexusState) -> NexusState:
     updated_messages = messages + [response]
     answer = response.content if isinstance(response.content, str) else str(response.content)
     return {**state, "messages": updated_messages, "answer": answer}
-

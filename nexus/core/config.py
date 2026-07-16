@@ -27,10 +27,16 @@ class Settings:
     )
 
     NVIDIA_API_KEY: str = os.getenv("NVIDIA_API_KEY", "")
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     MEM0_API_KEY: str = os.getenv("MEM0_API_KEY", "")
     SUPERMEMORY_API_KEY: str = os.getenv("SUPERMEMORY_API_KEY", "")
     NEXUS_LLM_MODEL: str = os.getenv("NEXUS_LLM_MODEL", "z-ai/glm-5.2")
-    NVIDIA_BASE_URL: str = os.getenv("NVIDIA_BASE_URL", "")
+    NVIDIA_BASE_URL: str = (
+        os.getenv("NVIDIA_BASE_URL")
+        or os.getenv("NVIDIA_NIM_BASE_URL")
+        or os.getenv("NEXUS_LLM_BASE_URL")
+        or ""
+    )
 
 
 settings = Settings()

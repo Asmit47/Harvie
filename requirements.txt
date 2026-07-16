@@ -3,6 +3,7 @@ mem0ai
 supermemory
 langchain-core
 langgraph
+langchain-openai
 langchain-nvidia-ai-endpoints
 langchain-community
 langchain-huggingface
