@@ -1,8 +1,8 @@
 """LangChain tool wrappers for Gmail.
 
 Each tool validates input via Pydantic schemas, calls the provider,
-and returns a formatted string. No subprocess logic, no JSON-RPC,
-no authentication — just validate → call provider → return.
+and returns a formatted string. Transport and authentication stay below the
+provider layer.
 """
 
 from langchain_core.tools import tool
@@ -10,8 +10,10 @@ from langchain_core.tools import tool
 from nexus.integrations.gmail.provider import gmail_provider
 from nexus.integrations.gmail.schemas import (
     DraftEmailInput,
+    ListRecentEmailsInput,
     ModifyEmailInput,
     ReadEmailInput,
+    ReplyToEmailInput,
     SearchEmailsInput,
     SendEmailInput,
 )
@@ -35,6 +37,12 @@ def gmail_search_emails(query: str, max_results: int = 10) -> str:
     return gmail_provider.search_emails(query, max_results)
 
 
+@tool(args_schema=ListRecentEmailsInput)
+def gmail_list_recent_emails(max_results: int = 10) -> str:
+    """List recent Gmail messages."""
+    return gmail_provider.list_recent_emails(max_results)
+
+
 @tool(args_schema=ReadEmailInput)
 def gmail_read_email(message_id: str) -> str:
     """Read a specific email by its Gmail message ID."""
@@ -47,9 +55,22 @@ def gmail_draft_email(
     subject: str,
     body: str,
     cc: list[str] | None = None,
+    bcc: list[str] | None = None,
 ) -> str:
     """Create a draft email without sending it."""
-    return gmail_provider.draft_email(to, subject, body, cc)
+    return gmail_provider.draft_email(to, subject, body, cc, bcc)
+
+
+@tool(args_schema=ReplyToEmailInput)
+def gmail_reply_to_email(
+    thread_id: str,
+    recipient_email: str,
+    body: str,
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+) -> str:
+    """Reply to an existing Gmail thread."""
+    return gmail_provider.reply_to_email(thread_id, recipient_email, body, cc, bcc)
 
 
 @tool(args_schema=ModifyEmailInput)
@@ -66,7 +87,9 @@ def gmail_modify_email(
 gmail_tools = [
     gmail_send_email,
     gmail_search_emails,
+    gmail_list_recent_emails,
     gmail_read_email,
     gmail_draft_email,
+    gmail_reply_to_email,
     gmail_modify_email,
 ]

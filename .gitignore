@@ -26,10 +26,10 @@ ENV/
 data/
 
 # Personal memory is ignored by default.
+nexus/memory/persona.json
 # The packaged nexus/memory/persona.json is intentionally tracked.
 memory/
 !nexus/memory/
-!nexus/memory/persona.json
 !nexus/memory/persona.json.example
 
 # macOS
