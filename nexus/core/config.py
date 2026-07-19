@@ -30,6 +30,12 @@ class Settings:
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     MEM0_API_KEY: str = os.getenv("MEM0_API_KEY", "")
     SUPERMEMORY_API_KEY: str = os.getenv("SUPERMEMORY_API_KEY", "")
+    COMPOSIO_API_KEY: str = os.getenv("COMPOSIO_API_KEY", "")
+    COMPOSIO_USER_ID: str = os.getenv("COMPOSIO_USER_ID", "")
+    COMPOSIO_CACHE_DIR: str = os.getenv(
+        "COMPOSIO_CACHE_DIR",
+        str(PROJECT_ROOT / "data" / "composio-cache"),
+    ) or str(PROJECT_ROOT / "data" / "composio-cache")
     NEXUS_LLM_MODEL: str = os.getenv("NEXUS_LLM_MODEL", "z-ai/glm-5.2")
     NVIDIA_BASE_URL: str = (
         os.getenv("NVIDIA_BASE_URL")

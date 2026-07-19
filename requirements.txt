@@ -12,3 +12,4 @@ langgraph-checkpoint-sqlite
 fastapi
 uvicorn[standard]
 pydantic
+composio

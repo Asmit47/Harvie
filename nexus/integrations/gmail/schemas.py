@@ -29,6 +29,12 @@ class SearchEmailsInput(BaseModel):
     max_results: int = Field(default=10, description="Maximum number of results")
 
 
+class ListRecentEmailsInput(BaseModel):
+    """Input for listing recent emails."""
+
+    max_results: int = Field(default=10, description="Maximum number of recent emails")
+
+
 class DraftEmailInput(BaseModel):
     """Input for creating a draft email."""
 
@@ -36,6 +42,17 @@ class DraftEmailInput(BaseModel):
     subject: str = Field(description="Email subject line")
     body: str = Field(description="Email body content")
     cc: list[str] | None = Field(default=None, description="CC recipients")
+    bcc: list[str] | None = Field(default=None, description="BCC recipients")
+
+
+class ReplyToEmailInput(BaseModel):
+    """Input for replying to an email thread."""
+
+    thread_id: str = Field(description="Gmail thread ID to reply to")
+    recipient_email: str = Field(description="Email address receiving the reply")
+    body: str = Field(description="Reply body content")
+    cc: list[str] | None = Field(default=None, description="CC recipients")
+    bcc: list[str] | None = Field(default=None, description="BCC recipients")
 
 
 class ModifyEmailInput(BaseModel):
