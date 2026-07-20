@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import sys
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from langsmith import traceable
 
 from nexus.core.graph import compiled_graph
 from nexus.core.llm import llm
@@ -20,6 +21,7 @@ def ask_nexus(user_input: str, session_id: str | None = None) -> str:
     return result["final_answer"]
 
 
+@traceable
 def close_session(session_id: str | None = None) -> str | None:
     """Summarize the session and write facts worth remembering to Tier 3."""
     sid = session_id or SESSION_ID

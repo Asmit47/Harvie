@@ -1,6 +1,8 @@
 import json
 import logging
 
+from langsmith import traceable
+
 from nexus.core.config import settings
 
 
@@ -73,6 +75,7 @@ class Mem0Patterns:
     def enabled(self) -> bool:
         return self._ensure_client()
 
+    @traceable
     def search(self, query: str = "", *, user_id: str | None = None, limit: int = 6) -> list[str]:
         """Fetch the top-k recent Mem0 memories for the user."""
         if not self.enabled:
@@ -89,6 +92,7 @@ class Mem0Patterns:
             return []
         return self._extract_texts(raw)[:limit]
 
+    @traceable
     def add(self, user_input: str, assistant_answer: str, *, user_id: str | None = None) -> None:
         """Persist a conversation turn so Mem0 can extract patterns."""
         if not self.enabled:

@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import logging
 
 from langchain_core.tools import tool
+from langsmith import traceable
 
 from nexus.core.config import settings
 
@@ -28,6 +29,7 @@ class KnowledgeBase:
     def enabled(self) -> bool:
         return self.client is not None
 
+    @traceable
     def search(
         self,
         query: str,
@@ -55,6 +57,7 @@ class KnowledgeBase:
             logger.warning("Supermemory search failed: %s", exc)
             return []
 
+    @traceable
     def add(self, content: str, *, metadata: dict | None = None) -> None:
         """Write a knowledge entry to Supermemory."""
         if not self.enabled:

@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from langsmith import traceable
+
 from nexus.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -221,6 +223,7 @@ class ComposioSessionManager:
         """Return provider-wrapped tools for the cached session."""
         return self.get_session(user_id).tools()
 
+    @traceable
     def execute(
         self,
         toolkit: str,
