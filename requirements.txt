@@ -9,6 +9,7 @@ langchain-community
 langchain-huggingface
 langchain-text-splitters
 langgraph-checkpoint-sqlite
+langsmith
 fastapi
 uvicorn[standard]
 pydantic

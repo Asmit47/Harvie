@@ -7,8 +7,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 load_dotenv(dotenv_path=PROJECT_ROOT / ".env")
 
 
+def _env(key: str, default: str = "") -> str:
+    """Like os.getenv but treats empty string as not-set."""
+    val = os.getenv(key)
+    return val if val else default
+
+
 class Settings:
-    NEXUS_USER_ID: str = os.getenv("NEXUS_USER_ID", "default_user")
+    NEXUS_USER_ID: str = _env("NEXUS_USER_ID", "default_user")
 
     PERSONA_JSON_PATH: Path = PROJECT_ROOT / "nexus" / "memory" / "persona.json"
     SESSION_DB_PATH: Path = PROJECT_ROOT / "data" / "sessions.sqlite"
@@ -26,21 +32,22 @@ class Settings:
         "check my day",
     )
 
-    NVIDIA_API_KEY: str = os.getenv("NVIDIA_API_KEY", "")
-    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
-    MEM0_API_KEY: str = os.getenv("MEM0_API_KEY", "")
-    SUPERMEMORY_API_KEY: str = os.getenv("SUPERMEMORY_API_KEY", "")
-    COMPOSIO_API_KEY: str = os.getenv("COMPOSIO_API_KEY", "")
-    COMPOSIO_USER_ID: str = os.getenv("COMPOSIO_USER_ID", "")
-    COMPOSIO_CACHE_DIR: str = os.getenv(
-        "COMPOSIO_CACHE_DIR",
-        str(PROJECT_ROOT / "data" / "composio-cache"),
-    ) or str(PROJECT_ROOT / "data" / "composio-cache")
-    NEXUS_LLM_MODEL: str = os.getenv("NEXUS_LLM_MODEL", "z-ai/glm-5.2")
+    NVIDIA_API_KEY: str = _env("NVIDIA_API_KEY", "")
+    OPENROUTER_API_KEY: str = _env("OPENROUTER_API_KEY", "")
+    GOOGLE_API_KEY: str = _env("GOOGLE_API_KEY", "")
+    MEM0_API_KEY: str = _env("MEM0_API_KEY", "")
+    SUPERMEMORY_API_KEY: str = _env("SUPERMEMORY_API_KEY", "")
+    COMPOSIO_API_KEY: str = _env("COMPOSIO_API_KEY", "")
+    COMPOSIO_USER_ID: str = _env("COMPOSIO_USER_ID", "")
+    COMPOSIO_CACHE_DIR: str = (
+        _env("COMPOSIO_CACHE_DIR", "") or str(PROJECT_ROOT / "data" / "composio-cache")
+    )
+    NEXUS_LLM_MODEL: str = _env("NEXUS_LLM_MODEL", "z-ai/glm-5.2")
+    GOOGLE_LLM_MODEL: str = _env("GOOGLE_LLM_MODEL", "gemini-3.5-flash")
     NVIDIA_BASE_URL: str = (
-        os.getenv("NVIDIA_BASE_URL")
-        or os.getenv("NVIDIA_NIM_BASE_URL")
-        or os.getenv("NEXUS_LLM_BASE_URL")
+        _env("NVIDIA_BASE_URL")
+        or _env("NVIDIA_NIM_BASE_URL")
+        or _env("NEXUS_LLM_BASE_URL")
         or ""
     )
 

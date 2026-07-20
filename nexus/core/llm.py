@@ -1,23 +1,46 @@
 import warnings
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from nexus.core.config import settings
 
-if not settings.OPENROUTER_API_KEY:
-    raise EnvironmentError("OPENROUTER_API_KEY is not set. Nexus requires an LLM to run.")
+NVIDIA_CATALOG_URL = "https://integrate.api.nvidia.com/v1"
 
 
-def _build_llm() -> ChatOpenAI:
-    return ChatOpenAI(
-        model=settings.NEXUS_LLM_MODEL,
+def _build_llm() -> ChatOpenAI | ChatGoogleGenerativeAI:
+    if settings.NVIDIA_API_KEY:
+        if not settings.NEXUS_LLM_MODEL:
+            raise EnvironmentError(
+                "NEXUS_LLM_MODEL is not set. Check your .env file."
+            )
+        base_url = (
+            settings.NVIDIA_BASE_URL
+            or NVIDIA_CATALOG_URL
+        )
+        return ChatOpenAI(
+            model=settings.NEXUS_LLM_MODEL,
+            temperature=0.2,
+            max_tokens=4096,
+            api_key=settings.NVIDIA_API_KEY,
+            base_url=base_url,
+        )
+    if not settings.GOOGLE_API_KEY:
+        raise EnvironmentError(
+            "GOOGLE_API_KEY is not set. Set either NVIDIA_API_KEY or GOOGLE_API_KEY."
+        )
+    if not settings.GOOGLE_LLM_MODEL:
+        raise EnvironmentError(
+            "GOOGLE_LLM_MODEL is not set. Check your .env file."
+        )
+    return ChatGoogleGenerativeAI(
+        model=settings.GOOGLE_LLM_MODEL,
         temperature=0.2,
-        max_tokens=4096,
-        api_key=settings.OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1",
+        max_output_tokens=4096,
+        google_api_key=settings.GOOGLE_API_KEY,
     )
 
 
 class _LazyBoundLLM:
-    def __init__(self, parent: "_LazyChatOpenAI", tools):
+    def __init__(self, parent: "_LazyLLM", tools):
         self._parent = parent
         self._tools = tools
         self._bound = None
@@ -34,9 +57,7 @@ class _LazyBoundLLM:
         return getattr(self._get_bound(), name)
 
 
-class _LazyChatOpenAI:
-    """Delay ChatOpenAI construction until the first real model call."""
-
+class _LazyLLM:
     def __init__(self):
         self._client = None
 
@@ -55,4 +76,4 @@ class _LazyChatOpenAI:
         return getattr(self._get_client(), name)
 
 
-llm = _LazyChatOpenAI()
+llm = _LazyLLM()

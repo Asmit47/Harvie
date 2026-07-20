@@ -85,6 +85,7 @@ class ComposioSessionManager:
             return self._composio
 
         os.environ.setdefault("COMPOSIO_CACHE_DIR", self.cache_dir)
+        os.environ.setdefault("COMPOSIO_API_KEY", self.api_key)
         Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
         try:
             from composio import Composio
