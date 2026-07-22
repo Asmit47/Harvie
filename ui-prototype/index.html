@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f3f3f5" />
+    <title>Nexus Console</title>
+    <link rel="stylesheet" href="../design_system/variables.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#dashboard" aria-label="Nexus dashboard">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>Nexus</span>
+        </a>
+        <nav class="main-nav" aria-label="Primary navigation">
+          <a class="active" href="#dashboard">Dashboard</a>
+          <a href="#sessions">Sessions</a>
+          <a href="#memory">Memory</a>
+          <a href="#tools">Tools</a>
+        </nav>
+        <div class="top-actions">
+          <span class="system-state"><span class="state-dot"></span> All systems ready</span>
+          <button class="icon-button" type="button" aria-label="Open settings" title="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a2 2 0 0 1-2.8 2.8l-.1-.1a2 2 0 0 0-3.4 1.4v.2a2 2 0 0 1-4 0v-.2a2 2 0 0 0-3.4-1.4l-.1.1A2 2 0 0 1 3 15.1l.1-.1a2 2 0 0 0-1.4-3.4h-.2a2 2 0 0 1 0-4h.2a2 2 0 0 0 1.4-3.4L3 4.1a2 2 0 0 1 2.8-2.8l.1.1a2 2 0 0 0 3.4-1.4v-.2a2 2 0 0 1 4 0V0a2 2 0 0 0 3.4 1.4l.1-.1A2 2 0 0 1 19.6 4l-.1.1a2 2 0 0 0 1.4 3.4h.2a2 2 0 0 1 0 4h-.2a2 2 0 0 0-1.5 3.5Z" transform="translate(0 4) scale(.68) translate(5 -4)"/></svg>
+          </button>
+          <button class="primary-button" id="new-session" type="button"><span>+</span> New session</button>
+        </div>
+      </header>
+
+      <main id="dashboard" class="main-content">
+        <section class="intro-row">
+          <div>
+            <p class="eyebrow"><span class="eyebrow-line"></span> Personal operations console</p>
+            <h1>Make room for<br /><em>better thinking.</em></h1>
+          </div>
+          <div class="intro-meta">
+            <p>Tuesday, 22 July 2026</p>
+            <p class="muted">Your context is loaded and ready.</p>
+          </div>
+        </section>
+
+        <section class="workspace-grid" aria-label="Active workspace">
+          <article class="thread-panel panel">
+            <div class="panel-heading">
+              <div>
+                <p class="section-kicker">Current thread</p>
+                <h2>Morning orientation</h2>
+              </div>
+              <button class="more-button" type="button" aria-label="Thread options" title="Thread options">···</button>
+            </div>
+            <div class="thread-body">
+              <div class="thread-line"></div>
+              <div class="message message-user">
+                <div class="message-label"><span class="mini-avatar user-avatar">A</span><span>You</span><time>09:14</time></div>
+                <p>Give me a clear read on today. What needs my attention first?</p>
+              </div>
+              <div class="message message-agent">
+                <div class="message-label"><span class="mini-avatar agent-avatar">N</span><span>Nexus</span><time>09:14</time></div>
+                <p>You have two decisions with a real time cost today. I’ve pulled them forward and left the rest in the queue.</p>
+                <div class="decision-list">
+                  <div><span class="priority-mark"></span><span><strong>Review the Q3 proposal</strong><small>Decision · due by 11:30</small></span><span class="arrow">↗</span></div>
+                  <div><span class="priority-mark soft"></span><span><strong>Confirm Thursday’s partner call</strong><small>Reply · 4 people waiting</small></span><span class="arrow">↗</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="command-area">
+              <form class="command-bar" id="command-form">
+                <span class="command-prompt">⌘</span>
+                <input id="command-input" type="text" placeholder="Ask Nexus to do something..." autocomplete="off" />
+                <button class="send-button" type="submit" aria-label="Send command" title="Send command">↗</button>
+              </form>
+              <div class="quick-actions" aria-label="Suggested actions">
+                <button type="button" data-command="Prepare my next meeting">Prepare next meeting</button>
+                <button type="button" data-command="Show me the inbox signal">Scan inbox signal</button>
+                <button type="button" data-command="Plan my focus block">Plan focus block</button>
+              </div>
+            </div>
+          </article>
+
+          <aside class="state-panel panel">
+            <div class="panel-heading">
+              <div>
+                <p class="section-kicker">Agent state</p>
+                <h2>Context stack</h2>
+              </div>
+              <span class="live-label"><span></span> Live</span>
+            </div>
+            <div class="state-stack">
+              <div class="state-row expanded">
+                <div class="state-number">01</div>
+                <div class="state-copy"><div><strong>Persona</strong><span class="tier-tag">Stable</span></div><p>How Nexus should think with you</p></div>
+                <button class="chevron" type="button" aria-label="Collapse persona">⌃</button>
+              </div>
+              <div class="state-detail"><span class="detail-bar"></span><p>Direct, concise, biased toward action.<br />Prefers decisions over summaries.</p><button type="button">View source <span>↗</span></button></div>
+              <div class="state-row">
+                <div class="state-number">02</div>
+                <div class="state-copy"><div><strong>Session memory</strong><span class="tier-tag">Working</span></div><p>What matters in this conversation</p></div>
+                <button class="chevron" type="button" aria-label="Expand session memory">⌄</button>
+              </div>
+              <div class="state-row">
+                <div class="state-number">03</div>
+                <div class="state-copy"><div><strong>Knowledge</strong><span class="tier-tag">Connected</span></div><p>What Nexus can retrieve when needed</p></div>
+                <button class="chevron" type="button" aria-label="Expand knowledge">⌄</button>
+              </div>
+            </div>
+            <div class="state-footer"><span class="sync-icon">↻</span><span>Last synced 2 min ago</span><button type="button" id="sync-button">Sync now</button></div>
+          </aside>
+        </section>
+
+        <section class="pipeline-section">
+          <div class="section-heading-row"><div><p class="section-kicker">Under the hood</p><h2>Agent pipeline</h2></div><span class="run-label" id="pipeline-status">Run completed in 1.8s</span></div>
+          <div class="pipeline" role="list" aria-label="Agent pipeline steps">
+            <button class="pipeline-step completed active" type="button" role="listitem"><span>01</span><strong>Load context</strong><small>Complete</small></button><span class="pipeline-connector complete"></span>
+            <button class="pipeline-step completed" type="button" role="listitem"><span>02</span><strong>Checkup</strong><small>Complete</small></button><span class="pipeline-connector complete"></span>
+            <button class="pipeline-step completed" type="button" role="listitem"><span>03</span><strong>Generate</strong><small>Complete</small></button><span class="pipeline-connector complete"></span>
+            <button class="pipeline-step" type="button" role="listitem"><span>04</span><strong>Tools</strong><small>Standing by</small></button><span class="pipeline-connector"></span>
+            <button class="pipeline-step" type="button" role="listitem"><span>05</span><strong>Verify</strong><small>Standing by</small></button><span class="pipeline-connector"></span>
+            <button class="pipeline-step" type="button" role="listitem"><span>06</span><strong>Persist</strong><small>Standing by</small></button>
+          </div>
+        </section>
+
+        <section class="lower-grid">
+          <article class="checkup-panel panel">
+            <div class="panel-heading"><div><p class="section-kicker">Today</p><h2>One useful nudge</h2></div><span class="date-stamp">07:30</span></div>
+            <div class="nudge-content"><div class="nudge-index">01 <span></span></div><div><p class="nudge-title">Protect the first hour.</p><p class="muted">Your calendar is clear until 10:30. The Q3 proposal has been open for three days and is the only item blocking the partner handoff.</p><button class="text-button" id="checkup-button" type="button">Run a fresh checkup <span>→</span></button></div></div>
+          </article>
+          <article class="ledger-panel panel">
+            <div class="panel-heading"><div><p class="section-kicker">Memory ledger</p><h2>Recently learned</h2></div><a class="quiet-link" href="#memory">Open ledger ↗</a></div>
+            <div class="ledger-list">
+              <div class="ledger-item"><span class="ledger-time">09:14</span><p>Q3 proposal is a current priority<span>Session memory · just now</span></p><span class="ledger-state">Added</span></div>
+              <div class="ledger-item"><span class="ledger-time">Yesterday</span><p>Prefers decisions surfaced before context<span>Persona · reinforced</span></p><span class="ledger-state">Updated</span></div>
+              <div class="ledger-item"><span class="ledger-time">18 Jul</span><p>Partner handoff follows proposal review<span>Knowledge · retrieved</span></p><span class="ledger-state">Used</span></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="tools-section" id="tools">
+          <div class="section-heading-row"><div><p class="section-kicker">Connected surface</p><h2>Tool readiness</h2></div><button class="outline-button" type="button">Manage tools <span>↗</span></button></div>
+          <div class="tool-table" role="table" aria-label="Connected tools">
+            <div class="tool-row tool-header" role="row"><span>Tool</span><span>Role</span><span>Last activity</span><span>Status</span></div>
+            <button class="tool-row" type="button"><span class="tool-name"><span class="tool-letter gmail">G</span>Gmail</span><span>Inbox signal</span><span>2 min ago</span><span class="status ready">Ready</span></button>
+            <button class="tool-row" type="button"><span class="tool-name"><span class="tool-letter calendar">C</span>Google Calendar</span><span>Schedule context</span><span>2 min ago</span><span class="status ready">Ready</span></button>
+            <button class="tool-row" type="button"><span class="tool-name"><span class="tool-letter memory">S</span>Supermemory</span><span>Long-term recall</span><span>18 min ago</span><span class="status ready">Ready</span></button>
+            <button class="tool-row" type="button"><span class="tool-name"><span class="tool-letter model">N</span>NVIDIA model</span><span>Reasoning engine</span><span>Just now</span><span class="status active-status">Active</span></button>
+          </div>
+        </section>
+      </main>
+      <footer class="footer"><span>NEXUS / PERSONAL OPERATIONS</span><span>Session <strong>nx-2407</strong> <i></i> v0.1</span></footer>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
