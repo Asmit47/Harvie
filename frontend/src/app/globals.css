@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+:root {
+  --background: #09090B;
+  --foreground: #F4F4F5;
+}
+
+body {
+  background-color: #09090B;
+  color: #F4F4F5;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
