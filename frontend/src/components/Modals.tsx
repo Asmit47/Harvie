@@ -7,7 +7,7 @@ import { X, Brain, Settings, Layers, CheckCircle2, Sliders, Shield, Database } f
 import { Integration, MemoryEntry } from '../types/nexus';
 
 export const Modals: React.FC = () => {
-  const { activeModal, setActiveModal } = useNexus();
+  const { activeModal, setActiveModal, memories: contextMemories, integrations: contextIntegrations } = useNexus();
 
   const dummyMemories: MemoryEntry[] = [
     {
@@ -65,7 +65,11 @@ export const Modals: React.FC = () => {
     },
   ];
 
+  const memoriesList = contextMemories.length > 0 ? contextMemories : dummyMemories;
+  const integrationsList = contextIntegrations.length > 0 ? contextIntegrations : dummyIntegrations;
+
   if (!activeModal) return null;
+
 
   return (
     <AnimatePresence>
@@ -112,7 +116,7 @@ export const Modals: React.FC = () => {
             {/* MEMORY LOG MODAL */}
             {activeModal === 'memory' && (
               <div className="space-y-3">
-                {dummyMemories.map((m) => (
+                {memoriesList.map((m) => (
                   <div
                     key={m.id}
                     className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] transition-colors"
@@ -132,7 +136,7 @@ export const Modals: React.FC = () => {
             {/* INTEGRATIONS / MCP MODAL */}
             {activeModal === 'integrations' && (
               <div className="grid grid-cols-1 gap-3">
-                {dummyIntegrations.map((item) => (
+                {integrationsList.map((item) => (
                   <div
                     key={item.id}
                     className="flex items-start justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]"

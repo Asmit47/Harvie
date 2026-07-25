@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from nexus.api.routes import chat, health, session
+from nexus.api.routes import chat, health, integrations, memory, session
 from nexus.integrations.composio.session import session_manager
 
 app = FastAPI(title="Nexus API", version="0.1.0")
@@ -17,8 +17,11 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(chat.router)
 app.include_router(session.router)
+app.include_router(memory.router)
+app.include_router(integrations.router)
 
 
 @app.on_event("startup")
 def validate_integrations() -> None:
     session_manager.validate_environment()
+

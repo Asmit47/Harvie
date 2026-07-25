@@ -1,7 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AgentStatus, FloatingCardItem, ModalType } from '../types/nexus';
+import { AgentStatus, FloatingCardItem, ModalType, MemoryEntry, Integration } from '../types/nexus';
+import { api } from '../lib/api';
 
 interface NexusContextType {
   agentStatus: AgentStatus;
@@ -16,8 +17,12 @@ interface NexusContextType {
   addCard: (card: Omit<FloatingCardItem, 'id' | 'timestamp'>) => void;
   removeCard: (id: string) => void;
   clearZone: (zone?: 'left' | 'right' | 'all') => void;
-  processUserCommand: (command: string) => void;
+  processUserCommand: (command: string) => Promise<void>;
   loadDemoState: () => void;
+  memories: MemoryEntry[];
+  integrations: Integration[];
+  fetchMemories: () => Promise<void>;
+  fetchIntegrations: () => Promise<void>;
 }
 
 const NexusContext = createContext<NexusContextType | undefined>(undefined);
@@ -28,17 +33,59 @@ export const NexusProvider = ({ children }: { children: ReactNode }) => {
   const [rightZoneItems, setRightZoneItems] = useState<FloatingCardItem[]>([]);
   const [ephemeralMessage, setEphemeralMessage] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [sessionId, setSessionId] = useState<string>('');
+  const [memories, setMemories] = useState<MemoryEntry[]>([]);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
 
   const isContextActive = leftZoneItems.length > 0 || rightZoneItems.length > 0;
 
-  // Ephemeral message timer auto-clear (6s)
+  // Initialize session ID from localStorage or generate new
+  useEffect(() => {
+    const saved = localStorage.getItem('nexus_session_id');
+    if (saved) {
+      setSessionId(saved);
+    } else {
+      const newId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      localStorage.setItem('nexus_session_id', newId);
+      setSessionId(newId);
+    }
+  }, []);
+
+  // Ephemeral message timer auto-clear (8s)
   useEffect(() => {
     if (!ephemeralMessage) return;
     const timer = setTimeout(() => {
       setEphemeralMessage(null);
-    }, 6000);
+    }, 8000);
     return () => clearTimeout(timer);
   }, [ephemeralMessage]);
+
+  const fetchMemories = async () => {
+    try {
+      const res = await api.getMemories();
+      setMemories(res.memories);
+    } catch (err) {
+      console.warn('Could not fetch memories from backend:', err);
+    }
+  };
+
+  const fetchIntegrations = async () => {
+    try {
+      const res = await api.getIntegrations();
+      setIntegrations(res.integrations);
+    } catch (err) {
+      console.warn('Could not fetch integrations from backend:', err);
+    }
+  };
+
+  // Fetch memory / integrations when modal opens
+  useEffect(() => {
+    if (activeModal === 'memory') {
+      fetchMemories();
+    } else if (activeModal === 'integrations') {
+      fetchIntegrations();
+    }
+  }, [activeModal]);
 
   const addCard = (cardData: Omit<FloatingCardItem, 'id' | 'timestamp'>) => {
     const newItem: FloatingCardItem = {
@@ -62,7 +109,12 @@ export const NexusProvider = ({ children }: { children: ReactNode }) => {
   const clearZone = (zone: 'left' | 'right' | 'all' = 'all') => {
     if (zone === 'left' || zone === 'all') setLeftZoneItems([]);
     if (zone === 'right' || zone === 'all') setRightZoneItems([]);
-    setEphemeralMessage('Canvas cleared. Orbit reset.');
+    
+    if (sessionId) {
+      api.closeSession(sessionId).catch(() => {});
+    }
+    
+    setEphemeralMessage('Canvas cleared. Session context reset.');
   };
 
   const loadDemoState = () => {
@@ -121,94 +173,62 @@ export const NexusProvider = ({ children }: { children: ReactNode }) => {
       ]);
 
       setAgentStatus('idle');
-    }, 800);
+    }, 600);
   };
 
-  const processUserCommand = (command: string) => {
-    const query = command.trim().toLowerCase();
-    setEphemeralMessage(null); // Clear previous ephemeral message
+  const processUserCommand = async (command: string) => {
+    const query = command.trim();
+    if (!query) return;
+
+    setEphemeralMessage(null);
     setAgentStatus('thinking');
 
-    // Simulate intelligent spatial responses
-    setTimeout(() => {
-      if (query.includes('clear') || query.includes('reset')) {
-        clearZone('all');
-        setAgentStatus('idle');
-        return;
-      }
-
-      if (query.includes('demo') || query.includes('cards') || query.includes('test')) {
-        loadDemoState();
-        return;
-      }
-
-      if (query.includes('meeting') || query.includes('calendar') || query.includes('schedule')) {
-        addCard({
-          type: 'calendar',
-          title: 'Team Architecture Sync',
-          time: 'Tomorrow, 10:00 AM',
-          context: 'Reviewing LangGraph state persistence schema with dev team.',
-          badge: 'Calendar',
-          priority: 'high',
-          zone: 'left',
-        });
-        setEphemeralMessage('Scheduled team meeting and added to your schedule.');
-        setAgentStatus('idle');
-        return;
-      }
-
-      if (query.includes('task') || query.includes('todo') || query.includes('remind')) {
-        addCard({
-          type: 'task',
-          title: 'Review PR #42: Framer Physics',
-          time: 'Today',
-          context: 'Ensure spring stiffness (100) and damping (20) match design spec.',
-          badge: 'Task',
-          priority: 'medium',
-          zone: 'right',
-        });
-        setEphemeralMessage('Task created and added to your action cards.');
-        setAgentStatus('idle');
-        return;
-      }
-
-      if (query.includes('email') || query.includes('mail') || query.includes('draft')) {
-        addCard({
-          type: 'email',
-          title: 'Re: Nexus Release Candidate',
-          time: 'Just Now',
-          context: 'Drafted update email to engineering team outlining Orbital UI specs.',
-          badge: 'Email Draft',
-          priority: 'high',
-          zone: 'right',
-        });
-        setEphemeralMessage('Draft email generated in right action zone.');
-        setAgentStatus('idle');
-        return;
-      }
-
-      if (query.includes('mcp') || query.includes('tool') || query.includes('run')) {
-        setAgentStatus('executing');
-        setTimeout(() => {
-          addCard({
-            type: 'mcp',
-            title: 'MCP: Search Vector Memory',
-            time: 'Completed • 42ms',
-            context: 'Retrieved 3 user preferences from persistent vector store.',
-            badge: 'MCP Output',
-            priority: 'medium',
-            zone: 'right',
-          });
-          setEphemeralMessage('MCP tool execution successful.');
-          setAgentStatus('idle');
-        }, 1000);
-        return;
-      }
-
-      // Default plain text response (ephemeral)
+    // Special client-side commands
+    if (query.toLowerCase().includes('clear') || query.toLowerCase().includes('reset')) {
+      clearZone('all');
       setAgentStatus('idle');
-      setEphemeralMessage(`Nexus: I processed your query "${command}". Ready for next instruction.`);
-    }, 1200);
+      return;
+    }
+
+    try {
+      // Send message to real backend FastAPI server
+      const response = await api.sendMessage(query, sessionId);
+
+      if (response.session_id) {
+        setSessionId(response.session_id);
+        localStorage.setItem('nexus_session_id', response.session_id);
+      }
+
+      if (response.has_tool_calls) {
+        setAgentStatus('executing');
+      }
+
+      // Display the final answer from backend
+      setEphemeralMessage(response.answer);
+
+      // Add cards returned by backend
+      if (response.cards && response.cards.length > 0) {
+        response.cards.forEach((card) => {
+          addCard({
+            type: card.type,
+            title: card.title,
+            time: card.time,
+            context: card.context,
+            actionLabel: card.actionLabel,
+            actionUrl: card.actionUrl,
+            priority: card.priority,
+            badge: card.badge,
+            zone: card.zone,
+          });
+        });
+      }
+
+      setAgentStatus('idle');
+    } catch (err: any) {
+      console.error('Error sending query to Nexus backend:', err);
+      setAgentStatus('idle');
+      setEphemeralMessage(`Nexus Backend: Failed to process query (${err.message || 'Server connection error'}). Make sure FastAPI server is running on port 8000.`);
+    }
   };
 
   return (
@@ -228,6 +248,10 @@ export const NexusProvider = ({ children }: { children: ReactNode }) => {
         clearZone,
         processUserCommand,
         loadDemoState,
+        memories,
+        integrations,
+        fetchMemories,
+        fetchIntegrations,
       }}
     >
       {children}
@@ -242,3 +266,4 @@ export const useNexus = () => {
   }
   return context;
 };
+
