@@ -73,5 +73,15 @@ def generate_answer(state: NexusState) -> NexusState:
 
     response = llm_with_tools.invoke(messages)
     updated_messages = messages + [response]
-    answer = response.content if isinstance(response.content, str) else str(response.content)
+
+    raw = response.content
+    if isinstance(raw, str):
+        answer = raw
+    elif isinstance(raw, list):
+        answer = "".join(
+            b["text"] for b in raw if isinstance(b, dict) and b.get("type") == "text"
+        )
+    else:
+        answer = str(raw)
+
     return {**state, "messages": updated_messages, "answer": answer}

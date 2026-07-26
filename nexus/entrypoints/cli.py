@@ -5,7 +5,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langsmith import traceable
 
 from nexus.core.graph import compiled_graph
-from nexus.core.llm import llm
+from nexus.core.llm import fallback_llm
 from nexus.integrations.composio.session import IntegrationError, session_manager
 from nexus.memory.tier2_session import generate_session_id, get_thread_config
 from nexus.memory.tier3_knowledge import knowledge_base
@@ -49,7 +49,7 @@ def close_session(session_id: str | None = None) -> str | None:
         ),
         HumanMessage(content=conversation_text),
     ]
-    summary = llm.invoke(messages).content
+    summary = fallback_llm.invoke(messages).content
 
     knowledge_base.add(
         content=summary,

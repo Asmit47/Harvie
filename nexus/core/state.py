@@ -22,8 +22,6 @@ class NexusState(TypedDict, total=False):
 
     # Answer pipeline
     answer: str
-    relevance_passed: bool
-    relevance_reason: str
     final_answer: str
 
 

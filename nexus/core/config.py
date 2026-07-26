@@ -32,8 +32,7 @@ class Settings:
         "check my day",
     )
 
-    NVIDIA_API_KEY: str = _env("NVIDIA_API_KEY", "")
-    OPENROUTER_API_KEY: str = _env("OPENROUTER_API_KEY", "")
+    GROQ_API_KEY: str = _env("GROQ_API_KEY", "")
     GOOGLE_API_KEY: str = _env("GOOGLE_API_KEY", "")
     MEM0_API_KEY: str = _env("MEM0_API_KEY", "")
     SUPERMEMORY_API_KEY: str = _env("SUPERMEMORY_API_KEY", "")
@@ -42,12 +41,11 @@ class Settings:
     COMPOSIO_CACHE_DIR: str = (
         _env("COMPOSIO_CACHE_DIR", "") or str(PROJECT_ROOT / "data" / "composio-cache")
     )
-    NEXUS_LLM_MODEL: str = _env("NEXUS_LLM_MODEL", "z-ai/glm-5.2")
+    GROQ_LLM_MODEL: str = _env("GROQ_LLM_MODEL", "openai/gpt-oss-120b")
     GOOGLE_LLM_MODEL: str = _env("GOOGLE_LLM_MODEL", "gemini-3.5-flash")
     NVIDIA_BASE_URL: str = (
         _env("NVIDIA_BASE_URL")
         or _env("NVIDIA_NIM_BASE_URL")
-        or _env("NEXUS_LLM_BASE_URL")
         or ""
     )
 

@@ -4,6 +4,8 @@ supermemory
 langchain-core
 langgraph
 langchain-openai
+langchain-groq
+langchain-google-genai
 langchain-nvidia-ai-endpoints
 langchain-community
 langchain-huggingface

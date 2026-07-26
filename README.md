@@ -15,7 +15,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Fill in `NVIDIA_API_KEY` in `.env` when using NVIDIA hosted endpoints. `MEM0_API_KEY` and `SUPERMEMORY_API_KEY` are optional; those tiers are disabled when the keys are missing. The default NVIDIA model is `z-ai/glm-5.2`.
+Fill in `GROQ_API_KEY` for the primary chat model and `GOOGLE_API_KEY` for the Gemini fallback/small-check model. `MEM0_API_KEY` and `SUPERMEMORY_API_KEY` are optional; those tiers are disabled when the keys are missing. The default chat model is Groq `openai/gpt-oss-120b`; the default fallback model is `gemini-3.5-flash`.
 
 Gmail and Google Calendar tools use Composio direct tool execution. Set
 `COMPOSIO_API_KEY` and connect Gmail/Calendar in Composio for `COMPOSIO_USER_ID`.
@@ -25,12 +25,6 @@ Authorize Google integrations from the CLI:
 ```bash
 python -m nexus auth gmail
 python -m nexus auth calendar
-```
-
-For hosted NVIDIA endpoints, leave `NVIDIA_BASE_URL` empty. For a self-hosted NVIDIA NIM endpoint, set `NVIDIA_BASE_URL` to the OpenAI-compatible root URL; `NVIDIA_API_KEY` is only needed if that endpoint requires bearer auth.
-
-```env
-NVIDIA_BASE_URL=http://localhost:8000/v1
 ```
 
 ## Run The API
