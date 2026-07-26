@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useNexus } from '../context/NexusContext';
 import { FloatingCard } from './FloatingCard';
 import { Clock, Zap, Trash2 } from 'lucide-react';

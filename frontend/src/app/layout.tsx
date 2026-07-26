@@ -1,10 +1,17 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { JetBrains_Mono, Manrope, Sora } from 'next/font/google';
+import { Providers } from './providers';
 import './globals.css';
 
-const inter = Inter({
+const sora = Sora({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-sora',
+  display: 'swap',
+});
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  variable: '--font-manrope',
   display: 'swap',
 });
 
@@ -15,8 +22,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Nexus — Orbital Spatial Interface',
-  description: 'LangGraph-powered personal AI assistant with a spatial orbital interface.',
+  title: 'Nexus | Personal AI Workspace',
+  description: 'A calm, proactive workspace for your personal AI assistant.',
 };
 
 export default function RootLayout({
@@ -25,9 +32,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} dark`}>
-      <body className="bg-[#09090B] text-[#F4F4F5] antialiased overflow-hidden selection:bg-indigo-500/30 selection:text-indigo-200">
-        {children}
+    <html lang="en" className={`${sora.variable} ${manrope.variable} ${jetbrainsMono.variable}`}>
+      <body>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

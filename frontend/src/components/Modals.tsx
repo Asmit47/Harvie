@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNexus } from '../context/NexusContext';
-import { X, Brain, Settings, Layers, CheckCircle2, Sliders, Shield, Database } from 'lucide-react';
+import { X, Brain, Settings, Layers, CheckCircle2 } from 'lucide-react';
 import { Integration, MemoryEntry } from '../types/nexus';
 
 export const Modals: React.FC = () => {

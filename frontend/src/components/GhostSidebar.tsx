@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNexus } from '../context/NexusContext';
-import { Brain, Settings, Layers, Sparkles, Orbit } from 'lucide-react';
+import { Brain, Settings, Layers, Orbit } from 'lucide-react';
 import { ModalType } from '../types/nexus';
 
 export const GhostSidebar: React.FC = () => {
