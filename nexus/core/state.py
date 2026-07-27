@@ -12,6 +12,9 @@ class NexusState(TypedDict, total=False):
     # Tier 2, persisted by checkpointer
     conversation_history: List[dict]
     current_task: str
+    session_title: str
+    session_created_at: str
+    session_updated_at: str
 
     # Tool-call loop
     messages: List[Any]
@@ -34,4 +37,3 @@ def _format_list(items: List[str], fallback: str = "None.") -> str:
     if not items:
         return fallback
     return "\n".join(f"- {item}" for item in items)
-
