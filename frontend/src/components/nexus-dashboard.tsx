@@ -1,69 +1,125 @@
 'use client';
 
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { useQuery } from '@tanstack/react-query';
-import { AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
 import { ConversationPanel } from '@/components/conversation-panel';
 import { NexusCommandBar } from '@/components/nexus-command-bar';
-import { Nucleus } from '@/components/nucleus';
+import { NucleusShell } from './nucleus-shell';
 import { NexusSidebar } from '@/components/nexus-sidebar';
-import { WorkspaceCard } from '@/components/workspace-card';
-import { proactiveCards } from '@/lib/workspace-data';
+import { api, type ChatApiResponse, type SessionSummary } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-
 export function NexusDashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const cards = useWorkspaceStore((state) => state.cards);
-  const messages = useWorkspaceStore((state) => state.messages);
-  const hasHydrated = useWorkspaceStore((state) => state.hasHydrated);
-  const proactiveBriefingSeeded = useWorkspaceStore((state) => state.proactiveBriefingSeeded);
-  const addCards = useWorkspaceStore((state) => state.addCards);
-  const dismissCard = useWorkspaceStore((state) => state.dismissCard);
-  const moveCard = useWorkspaceStore((state) => state.moveCard);
-  const markProactiveBriefingSeeded = useWorkspaceStore((state) => state.markProactiveBriefingSeeded);
-  const briefing = useQuery({
-    queryKey: ['nexus-proactive-briefing'],
-    queryFn: async () => proactiveCards,
-    staleTime: Infinity,
+  const queryClient = useQueryClient();
+  const [conversationNotice, setConversationNotice] = useState<string | null>(null);
+  const [activated, setActivated] = useState(false);
+  const sidebarOpen = useWorkspaceStore((state) => state.sidebarOpen);
+  const setSidebarOpen = useWorkspaceStore((state) => state.setSidebarOpen);
+  const activeSessionId = useWorkspaceStore((state) => state.activeSessionId);
+  const setActiveSessionId = useWorkspaceStore((state) => state.setActiveSessionId);
+  const sessionsQuery = useQuery({
+    queryKey: ['sessions'],
+    queryFn: api.listSessions,
+    retry: 1,
+    enabled: activated,
+  });
+  const activeSessionQuery = useQuery({
+    queryKey: ['session', activeSessionId],
+    queryFn: () => api.getSession(activeSessionId as string),
+    enabled: Boolean(activeSessionId),
+    retry: 1,
   });
 
-  useEffect(() => {
-    if (!hasHydrated || !briefing.data || proactiveBriefingSeeded) return;
-    const nextCard = briefing.data.find((card) => !cards.some((item) => item.id === card.id));
-    if (!nextCard) {
-      markProactiveBriefingSeeded();
-      return;
-    }
-    const timer = window.setTimeout(() => addCards([nextCard]), 750);
-    return () => window.clearTimeout(timer);
-  }, [addCards, briefing.data, cards, hasHydrated, markProactiveBriefingSeeded, proactiveBriefingSeeded]);
+  const activateSession = useCallback(
+    (sessionId: string) => {
+      setActiveSessionId(sessionId);
+      setConversationNotice(null);
+    },
+    [setActiveSessionId],
+  );
 
-  const handleDragEnd = ({ active, delta }: DragEndEvent) => {
-    const card = cards.find((item) => item.id === active.id);
-    if (!card) return;
-    moveCard(card.id, {
-      x: clamp(card.position.x + (delta.x / window.innerWidth) * 100, 7, 70),
-      y: clamp(card.position.y + (delta.y / window.innerHeight) * 100, 10, 69),
-    });
+  const newChatMutation = useMutation({
+    mutationFn: () => api.createSession(),
+    onSuccess: async (session) => {
+      queryClient.setQueryData(['session', session.id], session);
+      activateSession(session.id);
+      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    },
+  });
+
+  const renameSessionMutation = useMutation({
+    mutationFn: ({ sessionId, title }: { sessionId: string; title: string }) => api.renameSession(sessionId, title),
+    onSuccess: async (session) => {
+      queryClient.setQueryData(['session', session.id], session);
+      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    },
+  });
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: (sessionId: string) => api.deleteSession(sessionId),
+    onSuccess: async (_result, deletedSessionId) => {
+      queryClient.removeQueries({ queryKey: ['session', deletedSessionId] });
+      const currentSessions = queryClient.getQueryData<SessionSummary[]>(['sessions']) ?? [];
+      const remainingSessions = currentSessions.filter((session) => session.id !== deletedSessionId);
+      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+
+      if (activeSessionId !== deletedSessionId) return;
+
+      const nextSession = remainingSessions[0];
+      if (nextSession) {
+        activateSession(nextSession.id);
+        return;
+      }
+
+      const session = await api.createSession();
+      queryClient.setQueryData(['session', session.id], session);
+      activateSession(session.id);
+      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    },
+  });
+
+  const handleSendComplete = useCallback(
+    async (response: ChatApiResponse) => {
+      if (response.session_id) {
+        activateSession(response.session_id);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['session', response.session_id] });
+      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    },
+    [activateSession, queryClient],
+  );
+
+  const activateNexus = () => {
+    if (activated) return;
+    setActivated(true);
+    newChatMutation.mutate();
   };
 
   return (
     <main className="nexus-workspace">
-      <NexusSidebar open={sidebarOpen} onToggle={() => setSidebarOpen((open) => !open)} />
-      <ConversationPanel messages={messages} />
-      <Nucleus />
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <section className="workspace-cards" aria-label="Nexus workspace cards">
-          <AnimatePresence>
-            {cards.map((card) => <WorkspaceCard key={card.id} card={card} onDismiss={dismissCard} />)}
-          </AnimatePresence>
-        </section>
-      </DndContext>
-      <NexusCommandBar />
+      {activated && <NexusSidebar
+        open={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        sessions={sessionsQuery.data ?? []}
+        activeSessionId={activeSessionId}
+        sessionsLoading={sessionsQuery.isLoading}
+        onNewChat={() => newChatMutation.mutate()}
+        onSelectSession={activateSession}
+        onRenameSession={(sessionId, title) => renameSessionMutation.mutate({ sessionId, title })}
+        onDeleteSession={(sessionId) => deleteSessionMutation.mutate(sessionId)}
+      />}
+      {activated && <ConversationPanel
+        session={activeSessionQuery.data}
+        error={activeSessionQuery.isError ? 'Could not load this session.' : null}
+        notice={conversationNotice}
+      />}
+      <NucleusShell phase={activated ? 'active' : 'idle'} onActivate={activateNexus} />
+      {activated && <NexusCommandBar
+        sessionId={activeSessionId}
+        onSendComplete={handleSendComplete}
+        onSendError={(message) => setConversationNotice(message || null)}
+      />}
     </main>
   );
 }

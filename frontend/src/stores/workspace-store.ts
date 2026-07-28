@@ -22,57 +22,54 @@ export interface WorkspaceCard {
   position: CardPosition;
 }
 
-export interface ConversationMessage {
-  id: string;
-  role: 'assistant' | 'user';
-  content: string;
-}
+type ThemePreference = 'dark' | 'light' | 'system';
+type LayoutMode = 'orbital';
 
 interface WorkspaceState {
+  theme: ThemePreference;
+  layout: LayoutMode;
+  sidebarOpen: boolean;
+  activeSessionId: string | null;
   agentStatus: AgentStatus;
-  cards: WorkspaceCard[];
-  messages: ConversationMessage[];
-  hasHydrated: boolean;
-  proactiveBriefingSeeded: boolean;
+  setTheme: (theme: ThemePreference) => void;
+  setLayout: (layout: LayoutMode) => void;
+  setSidebarOpen: (open: boolean) => void;
+  setActiveSessionId: (sessionId: string | null) => void;
   setAgentStatus: (status: AgentStatus) => void;
-  setHasHydrated: (hasHydrated: boolean) => void;
-  markProactiveBriefingSeeded: () => void;
-  addCards: (cards: WorkspaceCard[]) => void;
-  dismissCard: (id: string) => void;
-  moveCard: (id: string, position: CardPosition) => void;
-  addMessage: (message: ConversationMessage) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set) => ({
+      theme: 'dark',
+      layout: 'orbital',
+      sidebarOpen: true,
+      activeSessionId: null,
       agentStatus: 'idle',
-      cards: [],
-      messages: [],
-      hasHydrated: false,
-      proactiveBriefingSeeded: false,
+      setTheme: (theme) => set({ theme }),
+      setLayout: (layout) => set({ layout }),
+      setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+      setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
       setAgentStatus: (agentStatus) => set({ agentStatus }),
-      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
-      markProactiveBriefingSeeded: () => set({ proactiveBriefingSeeded: true }),
-      addCards: (cards) =>
-        set((state) => ({
-          cards: [...state.cards, ...cards.filter((card) => !state.cards.some((item) => item.id === card.id))],
-        })),
-      dismissCard: (id) => set((state) => ({ cards: state.cards.filter((card) => card.id !== id) })),
-      moveCard: (id, position) =>
-        set((state) => ({
-          cards: state.cards.map((card) => (card.id === id ? { ...card, position } : card)),
-        })),
-      addMessage: (message) => set((state) => ({ messages: [...state.messages, message].slice(-8) })),
     }),
     {
       name: 'nexus-workspace',
       partialize: (state) => ({
-        cards: state.cards,
-        messages: state.messages,
-        proactiveBriefingSeeded: state.proactiveBriefingSeeded,
+        theme: state.theme,
+        layout: state.layout,
+        sidebarOpen: state.sidebarOpen,
+        activeSessionId: state.activeSessionId,
       }),
-      onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<WorkspaceState> | undefined;
+        return {
+          ...currentState,
+          theme: persisted?.theme ?? currentState.theme,
+          layout: persisted?.layout ?? currentState.layout,
+          sidebarOpen: persisted?.sidebarOpen ?? currentState.sidebarOpen,
+          activeSessionId: persisted?.activeSessionId ?? currentState.activeSessionId,
+        };
+      },
     },
   ),
 );

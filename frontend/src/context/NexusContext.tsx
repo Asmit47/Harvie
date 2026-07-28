@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { AgentStatus, FloatingCardItem, ModalType, MemoryEntry, Integration } from '../types/nexus';
 import { api } from '../lib/api';
 
+const SESSION_STORAGE_KEY = 'nexus-session-id';
+
 interface NexusContextType {
   agentStatus: AgentStatus;
   setAgentStatus: (status: AgentStatus) => void;
@@ -39,16 +41,34 @@ export const NexusProvider = ({ children }: { children: ReactNode }) => {
 
   const isContextActive = leftZoneItems.length > 0 || rightZoneItems.length > 0;
 
-  // Initialize session ID from localStorage or generate new
+  // Initialize session ID from the backend Session API.
   useEffect(() => {
-    const saved = localStorage.getItem('nexus_session_id');
-    if (saved) {
-      setSessionId(saved);
-    } else {
-      const newId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      localStorage.setItem('nexus_session_id', newId);
-      setSessionId(newId);
+    let cancelled = false;
+
+    async function initializeSession() {
+      const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (saved) {
+        try {
+          await api.getSession(saved);
+          if (!cancelled) setSessionId(saved);
+          return;
+        } catch {
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+        }
+      }
+
+      const session = await api.createSession();
+      localStorage.setItem(SESSION_STORAGE_KEY, session.id);
+      if (!cancelled) setSessionId(session.id);
     }
+
+    initializeSession().catch((err) => {
+      console.warn('Could not initialize Nexus session:', err);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Ephemeral message timer auto-clear (8s)
@@ -191,12 +211,20 @@ export const NexusProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      let currentSessionId = sessionId;
+      if (!currentSessionId) {
+        const session = await api.createSession();
+        currentSessionId = session.id;
+        setSessionId(session.id);
+        localStorage.setItem(SESSION_STORAGE_KEY, session.id);
+      }
+
       // Send message to real backend FastAPI server
-      const response = await api.sendMessage(query, sessionId);
+      const response = await api.sendMessage(query, currentSessionId);
 
       if (response.session_id) {
         setSessionId(response.session_id);
-        localStorage.setItem('nexus_session_id', response.session_id);
+        localStorage.setItem(SESSION_STORAGE_KEY, response.session_id);
       }
 
       if (response.has_tool_calls) {
@@ -266,4 +294,3 @@ export const useNexus = () => {
   }
   return context;
 };
-

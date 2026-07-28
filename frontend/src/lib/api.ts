@@ -9,6 +9,25 @@ export interface ChatApiResponse {
   has_tool_calls: boolean;
 }
 
+export interface ConversationTurn {
+  role: 'assistant' | 'user' | string;
+  content: string;
+}
+
+export interface SessionSummary {
+  id: string;
+  title: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+  message_count: number;
+  preview?: string | null;
+}
+
+export interface SessionDetail extends SessionSummary {
+  conversation_history: ConversationTurn[];
+  current_task?: string | null;
+}
+
 export interface MemoryApiResponse {
   memories: MemoryEntry[];
 }
@@ -18,6 +37,78 @@ export interface IntegrationsApiResponse {
 }
 
 export const api = {
+  async listSessions(): Promise<SessionSummary[]> {
+    const res = await fetch(`${API_BASE_URL}/sessions`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Sessions API Error ${res.status}`);
+    }
+
+    return res.json();
+  },
+
+  async getSession(sessionId: string): Promise<SessionDetail> {
+    const res = await fetch(`${API_BASE_URL}/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Session API Error ${res.status}`);
+    }
+
+    return res.json();
+  },
+
+  async createSession(title?: string): Promise<SessionDetail> {
+    const res = await fetch(`${API_BASE_URL}/sessions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(title ? { title } : {}),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Create Session Error ${res.status}`);
+    }
+
+    return res.json();
+  },
+
+  async renameSession(sessionId: string, title: string): Promise<SessionDetail> {
+    const res = await fetch(`${API_BASE_URL}/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ title }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Rename Session Error ${res.status}`);
+    }
+
+    return res.json();
+  },
+
+  async deleteSession(sessionId: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      throw new Error(`Delete Session Error ${res.status}`);
+    }
+  },
+
   async sendMessage(message: string, sessionId?: string): Promise<ChatApiResponse> {
     const res = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
