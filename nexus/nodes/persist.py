@@ -4,7 +4,7 @@ from nexus.memory.tier1_persona import mem0
 
 def persist_memory(state: NexusState) -> NexusState:
     """Persist the completed turn to Mem0 and session history."""
-    final = state.get("final_answer") or state.get("answer", "")
+    final = state.get("answer", "")
 
     mem0.add(state["user_input"], final)
 
