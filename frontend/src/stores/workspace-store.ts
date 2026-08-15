@@ -58,7 +58,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         theme: state.theme,
         layout: state.layout,
         sidebarOpen: state.sidebarOpen,
-        activeSessionId: state.activeSessionId,
       }),
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<WorkspaceState> | undefined;
@@ -67,7 +66,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           theme: persisted?.theme ?? currentState.theme,
           layout: persisted?.layout ?? currentState.layout,
           sidebarOpen: persisted?.sidebarOpen ?? currentState.sidebarOpen,
-          activeSessionId: persisted?.activeSessionId ?? currentState.activeSessionId,
         };
       },
     },

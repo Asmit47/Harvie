@@ -36,7 +36,22 @@ export interface IntegrationsApiResponse {
   integrations: Integration[];
 }
 
+export interface GreetingResponse {
+  period: string;
+  greeting: string;
+}
+
 export const api = {
+  async getGreeting(): Promise<GreetingResponse> {
+    const res = await fetch(`${API_BASE_URL}/greeting`);
+
+    if (!res.ok) {
+      throw new Error(`Greeting API Error ${res.status}`);
+    }
+
+    return res.json();
+  },
+
   async listSessions(): Promise<SessionSummary[]> {
     const res = await fetch(`${API_BASE_URL}/sessions`, {
       method: 'GET',

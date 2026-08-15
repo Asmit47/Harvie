@@ -6,7 +6,7 @@ import { ConversationPanel } from '@/components/conversation-panel';
 import { NexusCommandBar } from '@/components/nexus-command-bar';
 import { NucleusShell } from './nucleus-shell';
 import { NexusSidebar } from '@/components/nexus-sidebar';
-import { api, type ChatApiResponse, type SessionSummary } from '@/lib/api';
+import { api, type ChatApiResponse, type SessionDetail, type SessionSummary } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 
 export function NexusDashboard() {
@@ -17,11 +17,11 @@ export function NexusDashboard() {
   const setSidebarOpen = useWorkspaceStore((state) => state.setSidebarOpen);
   const activeSessionId = useWorkspaceStore((state) => state.activeSessionId);
   const setActiveSessionId = useWorkspaceStore((state) => state.setActiveSessionId);
+  const setAgentStatus = useWorkspaceStore((state) => state.setAgentStatus);
   const sessionsQuery = useQuery({
     queryKey: ['sessions'],
     queryFn: api.listSessions,
     retry: 1,
-    enabled: activated,
   });
   const activeSessionQuery = useQuery({
     queryKey: ['session', activeSessionId],
@@ -32,6 +32,7 @@ export function NexusDashboard() {
 
   const activateSession = useCallback(
     (sessionId: string) => {
+      setActivated(true);
       setActiveSessionId(sessionId);
       setConversationNotice(null);
     },
@@ -90,15 +91,61 @@ export function NexusDashboard() {
     [activateSession, queryClient],
   );
 
-  const activateNexus = () => {
-    if (activated) return;
-    setActivated(true);
-    newChatMutation.mutate();
-  };
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+
+  const sendMessageMutation = useMutation({
+    mutationFn: ({ message, sessionId }: { message: string; sessionId: string | null }) => api.sendMessage(message, sessionId || undefined),
+    onMutate: async ({ message, sessionId }) => {
+      setAgentStatus('thinking');
+      setConversationNotice(null);
+      setPendingMessage(message);
+
+      if (sessionId) {
+        await queryClient.cancelQueries({ queryKey: ['session', sessionId] });
+        const previousSession = queryClient.getQueryData<SessionDetail>(['session', sessionId]);
+
+        if (previousSession) {
+          queryClient.setQueryData<SessionDetail>(['session', sessionId], {
+            ...previousSession,
+            conversation_history: [
+              ...previousSession.conversation_history,
+              { role: 'user', content: message },
+            ],
+          });
+        }
+
+        return { previousSession };
+      }
+    },
+    onSuccess: async (response) => {
+      await handleSendComplete(response);
+    },
+    onError: (error, variables, context) => {
+      setConversationNotice(error instanceof Error ? error.message : 'I could not reach the agent service.');
+      if (variables.sessionId && context?.previousSession) {
+        queryClient.setQueryData(['session', variables.sessionId], context.previousSession);
+      }
+    },
+    onSettled: () => {
+      setAgentStatus('idle');
+      setPendingMessage(null);
+    },
+  });
+
+  const sendMessage = useCallback(
+    (message: string) => {
+      const command = message.trim();
+      if (!command || sendMessageMutation.isPending) return;
+      setActivated(true);
+      setPendingMessage(command);
+      sendMessageMutation.mutate({ message: command, sessionId: activeSessionId });
+    },
+    [activeSessionId, sendMessageMutation],
+  );
 
   return (
     <main className="nexus-workspace">
-      {activated && <NexusSidebar
+      <NexusSidebar
         open={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         sessions={sessionsQuery.data ?? []}
@@ -108,18 +155,22 @@ export function NexusDashboard() {
         onSelectSession={activateSession}
         onRenameSession={(sessionId, title) => renameSessionMutation.mutate({ sessionId, title })}
         onDeleteSession={(sessionId) => deleteSessionMutation.mutate(sessionId)}
-      />}
+      />
       {activated && <ConversationPanel
         session={activeSessionQuery.data}
         error={activeSessionQuery.isError ? 'Could not load this session.' : null}
         notice={conversationNotice}
+        pendingUserMessage={pendingMessage}
+        isThinking={sendMessageMutation.isPending}
       />}
-      <NucleusShell phase={activated ? 'active' : 'idle'} onActivate={activateNexus} />
-      {activated && <NexusCommandBar
-        sessionId={activeSessionId}
-        onSendComplete={handleSendComplete}
-        onSendError={(message) => setConversationNotice(message || null)}
-      />}
+      <NucleusShell
+        phase={activated ? 'active' : 'idle'}
+      />
+      <NexusCommandBar
+        sending={sendMessageMutation.isPending}
+        onSend={sendMessage}
+        boot={!activated}
+      />
     </main>
   );
 }

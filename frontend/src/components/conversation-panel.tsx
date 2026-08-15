@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { SessionDetail } from '@/lib/api';
 
@@ -7,39 +8,69 @@ interface ConversationPanelProps {
   session?: SessionDetail;
   error?: string | null;
   notice?: string | null;
+  pendingUserMessage?: string | null;
+  isThinking?: boolean;
 }
 
-export function ConversationPanel({ session, error = null, notice = null }: ConversationPanelProps) {
+export function ConversationPanel({
+  session,
+  error = null,
+  notice = null,
+  pendingUserMessage = null,
+  isThinking = false,
+}: ConversationPanelProps) {
   const reduceMotion = useReducedMotion();
-  const messages = session?.conversation_history ?? [];
-  const greeting = 'Good morning. Would you like me to begin your daily briefing?';
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const history = session?.conversation_history ?? [];
+
+  // Determine if pendingUserMessage needs to be displayed explicitly
+  const lastMsg = history[history.length - 1];
+  const showPendingUser =
+    Boolean(pendingUserMessage) &&
+    (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== pendingUserMessage);
+
+  const displayMessages = [
+    ...history,
+    ...(showPendingUser ? [{ role: 'user', content: pendingUserMessage! }] : []),
+  ];
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [displayMessages.length, isThinking]);
 
   return (
     <section className="conversation-panel" aria-label="Conversation">
-      <p className="conversation-kicker">Nexus</p>
-      <p className="conversation-intro">Your workspace is ready when you are.</p>
       <div className="conversation-thread" aria-live="polite">
-        <motion.article
-          className="conversation-message"
-          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.36, delay: reduceMotion ? 0 : 0.24 }}
-        >
-          <span>Nexus</span>
-          <p>{greeting}</p>
-        </motion.article>
-        {messages.map((message, index) => (
+        {displayMessages.map((message, index) => (
           <motion.article
-            key={`${message.role}-${index}`}
-            className={message.role === 'user' ? 'conversation-message conversation-message-user' : 'conversation-message'}
+            key={`${message.role}-${index}-${message.content.slice(0, 12)}`}
+            className={
+              message.role === 'user'
+                ? 'conversation-message conversation-message-user'
+                : 'conversation-message conversation-message-assistant'
+            }
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.32 }}
           >
-            <span>{message.role === 'user' ? 'You' : 'Nexus'}</span>
             <p>{message.content}</p>
           </motion.article>
         ))}
+        {isThinking && (
+          <motion.article
+            className="conversation-message conversation-message-assistant conversation-message-thinking"
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.32 }}
+          >
+            <div className="thinking-dots" aria-label="Nexus is thinking">
+              <span />
+              <span />
+              <span />
+            </div>
+          </motion.article>
+        )}
+        <div ref={messagesEndRef} />
       </div>
       {error && <p className="conversation-status conversation-status-error">{error}</p>}
       {notice && <p className="conversation-status conversation-status-error">{notice}</p>}
