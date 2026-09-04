@@ -39,6 +39,10 @@ KNOWLEDGE BASE:
 - Save when the user shares an important decision, stable preference, project fact, lesson, or other detail worth remembering long-term.
 - Don't search or save by default. Use the tools only when they help the current turn.
 
+OPEN LOOPS:
+- Use open-loop tools when the user explicitly asks to track, update, complete, or snooze unfinished work.
+- Use save_knowledge only for explicit durable facts, decisions, preferences, lessons, or goals. Never save raw conversation turns.
+
 EMAIL:
 - You can send, read, search, draft, and modify Gmail emails.
 - Use Gmail search syntax for queries (e.g. "from:alice subject:report is:unread").
@@ -59,11 +63,18 @@ def generate_answer(state: NexusState) -> NexusState:
 
     if not messages:
         tool_block = _format_list(state.get("tool_results", []))
+        attention = _format_list(
+            [
+                f"{item['reason']}: {item['title']} (due {item.get('due_at') or 'unscheduled'})"
+                for item in state.get("attention_items", [])
+            ]
+        )
         system_content = "\n\n".join(
             [
                 NEXUS_SYSTEM_PROMPT,
                 state.get("system_prompt", ""),
                 f"## Tool Results\n{tool_block}",
+                f"## Attention Items\n{attention}",
             ]
         )
         messages = [

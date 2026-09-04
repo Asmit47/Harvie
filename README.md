@@ -2,9 +2,14 @@
 
 Nexus is a LangGraph business assistant with three memory tiers:
 
-- Tier 1: stable persona from `nexus/memory/persona.json` plus Mem0 learned patterns.
+- Tier 1: stable persona from `nexus/memory/persona.json`.
 - Tier 2: session working memory through a SQLite LangGraph checkpointer.
 - Tier 3: optional Supermemory knowledge search/save tools.
+
+Open loops (tasks, commitments, follow-ups, waiting items, and unresolved questions)
+are stored separately in SQLite, so they survive expired chat sessions. The API exposes
+them at `GET/POST /open-loops`, with `PATCH /open-loops/{id}`, and complete/snooze actions.
+Chat responses include separate `attention_items` for deterministic overdue or due-soon loops.
 
 ## Setup
 
@@ -15,7 +20,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Fill in `GROQ_API_KEY` for the primary chat model and `GOOGLE_API_KEY` for the Gemini fallback/small-check model. `MEM0_API_KEY` and `SUPERMEMORY_API_KEY` are optional; those tiers are disabled when the keys are missing. The default chat model is Groq `openai/gpt-oss-120b`; the default fallback model is `gemini-3.5-flash`.
+Fill in `GROQ_API_KEY` for the primary chat model and `GOOGLE_API_KEY` for the Gemini fallback/small-check model. `SUPERMEMORY_API_KEY` is optional; Nexus continues with persona and session memory when it is missing. The default chat model is Groq `openai/gpt-oss-120b`; the default fallback model is `gemini-3.5-flash`.
 
 Gmail and Google Calendar tools use Composio direct tool execution. Set
 `COMPOSIO_API_KEY` and connect Gmail/Calendar in Composio for `COMPOSIO_USER_ID`.

@@ -6,11 +6,15 @@ class NexusState(TypedDict, total=False):
     user_input: str
     session_id: str
 
-    # Tier 1
+    # Composed model context
     system_prompt: str
+    request_mode: str
+    response_context: dict
+    attention_items: List[dict]
 
     # Tier 2, persisted by checkpointer
     conversation_history: List[dict]
+    session_summary: str
     current_task: str
     session_title: str
     session_created_at: str

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import time
 
-from nexus.memory.tier1_persona import load_persona_json, mem0
+from nexus.memory.tier1_persona import load_persona_json
 from nexus.memory.tier3_knowledge import knowledge_base
 
 router = APIRouter()
@@ -46,19 +46,7 @@ def get_memory() -> MemoryResponse:
             )
         )
 
-    # 2. Mem0 patterns
-    mem0_patterns = mem0.search(limit=5)
-    for idx, pat in enumerate(mem0_patterns):
-        memories.append(
-            MemoryEntryDTO(
-                id=f"mem-mem0-{idx}",
-                category="Learned Pattern",
-                fact=pat,
-                timestamp=ts,
-            )
-        )
-
-    # 3. Supermemory / Knowledge Base
+    # 2. Supermemory / Knowledge Base
     if knowledge_base.enabled:
         kb_items = knowledge_base.search("user preferences decisions", limit=5)
         for idx, item in enumerate(kb_items):

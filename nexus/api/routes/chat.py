@@ -29,9 +29,21 @@ class CardDTO(BaseModel):
     timestamp: str
 
 
+class AttentionItemDTO(BaseModel):
+    id: str
+    type: str
+    title: str
+    priority: str
+    due_at: Optional[str] = None
+    reason: str
+    source_id: Optional[str] = None
+
+
 class ChatResponse(BaseModel):
     answer: str
     session_id: str
+    attention_items: List[AttentionItemDTO] = []
+    open_loop_ids: List[str] = []
     cards: List[CardDTO] = []
     has_tool_calls: bool = False
 
@@ -154,8 +166,8 @@ def chat(request: ChatRequest) -> ChatResponse:
     return ChatResponse(
         answer=answer,
         session_id=session_id,
+        attention_items=result.get("attention_items") or [],
+        open_loop_ids=[item["id"] for item in result.get("response_context", {}).get("relevant_open_loops", [])],
         cards=cards,
         has_tool_calls=has_tools,
     )
-
-

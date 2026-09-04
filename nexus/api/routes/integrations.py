@@ -4,7 +4,6 @@ from typing import List
 
 from nexus.core.config import settings
 from nexus.memory.tier3_knowledge import knowledge_base
-from nexus.memory.tier1_persona import mem0
 
 router = APIRouter()
 
@@ -51,14 +50,6 @@ def get_integrations() -> IntegrationsResponse:
         ),
         IntegrationDTO(
             id="int-4",
-            name="Mem0 Behavioral Patterns",
-            type="Tool",
-            status="connected" if mem0.enabled else "idle",
-            icon="⚡",
-            description="Extracts & learns personalized user working patterns.",
-        ),
-        IntegrationDTO(
-            id="int-5",
             name="Composio Tooling Engine",
             type="API",
             status="connected" if settings.COMPOSIO_API_KEY else "idle",

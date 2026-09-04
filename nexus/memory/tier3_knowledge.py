@@ -34,42 +34,65 @@ class KnowledgeBase:
         self,
         query: str,
         *,
-        threshold: float = settings.KNOWLEDGE_THRESHOLD,
+        search_mode: str = "hybrid",
         limit: int = 5,
+        rerank: bool = False,
+        threshold: float | None = None,
     ) -> list[dict]:
-        """Semantic search, filtered by similarity threshold."""
+        """Semantic search with configurable mode, limit, reranking, and threshold."""
         if not self.enabled:
             return []
+        if search_mode not in {"memories", "documents", "hybrid"}:
+            raise ValueError("search_mode must be 'memories', 'documents', or 'hybrid'")
         try:
-            response = self.client.search.execute(
-                q=query,
-                container_tag=settings.NEXUS_USER_ID,
-                limit=limit,
-            )
+            kwargs = {
+                "q": query,
+                "container_tag": settings.NEXUS_USER_ID,
+                "search_mode": search_mode,
+                "limit": limit,
+                "rerank": rerank,
+            }
+            if threshold is not None:
+                kwargs["threshold"] = threshold
+            response = self.client.search.memories(**kwargs)
             results = []
             for item in response.results or []:
                 content = getattr(item, "memory", None) or getattr(item, "chunk", None) or str(item)
-                similarity = getattr(item, "similarity", 0.0)
-                if similarity >= threshold:
-                    results.append({"content": content, "similarity": round(similarity, 2)})
+                similarity = getattr(item, "similarity", None)
+                results.append({
+                    "content": content,
+                    "similarity": round(similarity, 2) if similarity is not None else None,
+                })
             return results
         except Exception as exc:
             logger.warning("Supermemory search failed: %s", exc)
             return []
 
     @traceable
-    def add(self, content: str, *, metadata: dict | None = None) -> None:
-        """Write a knowledge entry to Supermemory."""
+    def add(
+        self,
+        content: str,
+        *,
+        mode: str = "instant",
+        metadata: dict | None = None,
+    ) -> bool:
+        """Write a knowledge entry and report whether it was accepted."""
+        if mode not in {"instant", "dynamic"}:
+            raise ValueError("mode must be 'instant' or 'dynamic'")
+
         if not self.enabled:
-            return
+            return False
         try:
             self.client.add(
                 content=content,
                 container_tag=settings.NEXUS_USER_ID,
+                dreaming=mode,
                 metadata=metadata or {},
             )
+            return True
         except Exception as exc:
             logger.warning("Supermemory write failed: %s", exc)
+            return False
 
 
 knowledge_base = KnowledgeBase()
@@ -81,14 +104,24 @@ def search_knowledge(query: str) -> str:
     query = (query or "").strip()
     if not query:
         return "No query provided."
-    results = knowledge_base.search(query)
+    results = knowledge_base.search(
+        query,
+        search_mode="hybrid",
+        limit=5,
+        rerank=False,
+        threshold=None,
+    )
     if not results:
         if not knowledge_base.enabled:
             return "Knowledge base is disabled because SUPERMEMORY_API_KEY is not set."
         return "No matching knowledge found."
     lines = ["Relevant long-term knowledge:"]
     for result in results:
-        lines.append(f"- [{result['similarity']}] {result['content']}")
+        similarity = result.get("similarity")
+        if similarity is not None:
+            lines.append(f"- [{similarity}] {result['content']}")
+        else:
+            lines.append(f"- {result['content']}")
     return "\n".join(lines)
 
 
@@ -100,13 +133,16 @@ def save_knowledge(content: str) -> str:
         return "No content provided to save."
     if not knowledge_base.enabled:
         return "Knowledge base is disabled because SUPERMEMORY_API_KEY is not set; nothing was saved."
-    knowledge_base.add(
+    success = knowledge_base.add(
         content=content,
+        mode="instant",
         metadata={
-            "type": "agent_saved_knowledge",
+            "source": "nexus",
+            "type": "durable_knowledge",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     )
     preview = content if len(content) <= 240 else content[:237] + "..."
-    return f"Saved to long-term knowledge: {preview}"
-
+    if success:
+        return f"Saved to long-term knowledge: {preview}"
+    return "Failed to save to long-term knowledge."
