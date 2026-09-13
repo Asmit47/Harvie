@@ -1,6 +1,7 @@
-import { FloatingCardItem, Integration, MemoryEntry } from '../types/nexus';
+import { FloatingCardItem, Integration, MemoryEntry } from '../types/harvie';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Requests stay same-origin so Clerk identity is attached by the server-side proxy.
+const API_BASE_URL = '/api/harvie';
 
 export interface ChatApiResponse {
   answer: string;

@@ -2,16 +2,16 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FloatingCardItem } from '../types/nexus';
+import { FloatingCardItem } from '../types/harvie';
 import { Calendar, Clock, CheckSquare, Mail, Cpu, X, ArrowUpRight } from 'lucide-react';
-import { useNexus } from '../context/NexusContext';
+import { useHarvie } from '../context/HarvieContext';
 
 interface FloatingCardProps {
   card: FloatingCardItem;
 }
 
 export const FloatingCard: React.FC<FloatingCardProps> = ({ card }) => {
-  const { removeCard } = useNexus();
+  const { removeCard } = useHarvie();
 
   const getCardIcon = () => {
     switch (card.type) {

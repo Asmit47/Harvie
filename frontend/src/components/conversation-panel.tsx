@@ -63,7 +63,7 @@ export function ConversationPanel({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.32 }}
           >
-            <div className="thinking-dots" aria-label="Nexus is thinking">
+            <div className="thinking-dots" aria-label="Harvie is thinking">
               <span />
               <span />
               <span />

@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNexus } from '../context/NexusContext';
+import { useHarvie } from '../context/HarvieContext';
 
 export const EphemeralReply: React.FC = () => {
-  const { ephemeralMessage, isContextActive } = useNexus();
+  const { ephemeralMessage, isContextActive } = useHarvie();
 
   return (
     <div

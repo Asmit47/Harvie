@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNexus } from '../context/NexusContext';
+import { useHarvie } from '../context/HarvieContext';
 import { X, Brain, Settings, Layers, CheckCircle2 } from 'lucide-react';
-import { Integration, MemoryEntry } from '../types/nexus';
+import { Integration, MemoryEntry } from '../types/harvie';
 
 export const Modals: React.FC = () => {
-  const { activeModal, setActiveModal, memories: contextMemories, integrations: contextIntegrations } = useNexus();
+  const { activeModal, setActiveModal, memories: contextMemories, integrations: contextIntegrations } = useHarvie();
 
   const dummyMemories: MemoryEntry[] = [
     {
@@ -19,7 +19,7 @@ export const Modals: React.FC = () => {
     {
       id: 'm2',
       category: 'Work context',
-      fact: 'Project "Nexus" uses LangGraph for backend agent orchestration & Next.js for spatial frontend.',
+      fact: 'Project "Harvie" uses LangGraph for backend agent orchestration & Next.js for spatial frontend.',
       timestamp: 'Yesterday, 4:15 PM',
     },
     {
@@ -96,7 +96,7 @@ export const Modals: React.FC = () => {
                   {activeModal === 'settings' && 'Orbital Settings'}
                 </h2>
                 <p className="text-xs text-[#A1A1AA]">
-                  {activeModal === 'memory' && 'Semantic facts stored in Nexus vector memory'}
+                  {activeModal === 'memory' && 'Semantic facts stored in Harvie vector memory'}
                   {activeModal === 'integrations' && 'Connected Model Context Protocol tools'}
                   {activeModal === 'settings' && 'Spatial parameters & Framer motion physics'}
                 </p>

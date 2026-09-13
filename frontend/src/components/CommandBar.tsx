@@ -2,11 +2,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNexus } from '../context/NexusContext';
+import { useHarvie } from '../context/HarvieContext';
 import { ArrowUpRight, Sparkles, Calendar, CheckSquare, Trash2, Cpu } from 'lucide-react';
 
 export const CommandBar: React.FC = () => {
-  const { processUserCommand, loadDemoState, clearZone, setEphemeralMessage, isContextActive } = useNexus();
+  const { processUserCommand, loadDemoState, clearZone, setEphemeralMessage, isContextActive } = useHarvie();
   const [input, setInput] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -118,7 +118,7 @@ export const CommandBar: React.FC = () => {
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder="Talk to Nexus... (e.g. 'Show tasks', 'Schedule sync')"
+            placeholder="Talk to Harvie... (e.g. 'Show tasks', 'Schedule sync')"
             className="w-full bg-transparent text-[#F4F4F5] placeholder-[#71717A] font-mono text-sm leading-relaxed resize-none outline-none pr-12 py-1 max-h-[120px] scrollbar-none"
           />
 

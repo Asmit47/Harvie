@@ -53,7 +53,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setAgentStatus: (agentStatus) => set({ agentStatus }),
     }),
     {
-      name: 'nexus-workspace',
+      name: 'harvie-workspace',
       partialize: (state) => ({
         theme: state.theme,
         layout: state.layout,

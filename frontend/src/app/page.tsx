@@ -1,5 +1,6 @@
-import { NexusDashboard } from '@/components/nexus-dashboard';
+import { LandingPage } from '@/components/landing-page';
 
 export default function Home() {
-  return <NexusDashboard />;
+  return <LandingPage />;
 }
+

@@ -65,7 +65,7 @@ export function NucleusShell({ phase, onArrive }: NucleusShellProps) {
 
   return (
     <motion.div
-      aria-label={phase === 'idle' ? 'Nexus startup' : 'Nexus is active'}
+      aria-label={phase === 'idle' ? 'Harvie startup' : 'Harvie is active'}
       style={{
         position: 'fixed',
         translateX: '-50%',

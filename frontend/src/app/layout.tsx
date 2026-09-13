@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Nexus | Personal AI Workspace',
+  title: 'Harvie | Personal AI Workspace',
   description: 'A calm, proactive workspace for your personal AI assistant.',
 };
 

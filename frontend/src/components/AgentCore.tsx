@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useNexus } from '../context/NexusContext';
+import { useHarvie } from '../context/HarvieContext';
 import { Sparkles, Activity, Cpu } from 'lucide-react';
 
 export const AgentCore: React.FC = () => {
-  const { isContextActive, agentStatus, setAgentStatus } = useNexus();
+  const { isContextActive, agentStatus, setAgentStatus } = useHarvie();
 
   // Color mappings based on status
   const getBaseColor = () => {
@@ -159,7 +159,7 @@ export const AgentCore: React.FC = () => {
               : 'bg-indigo-400'
           }`}
         />
-        <span>Nexus {agentStatus}</span>
+        <span>Harvie {agentStatus}</span>
       </motion.div>
     </motion.div>
   );

@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNexus } from '../context/NexusContext';
+import { useHarvie } from '../context/HarvieContext';
 import { Brain, Settings, Layers, Orbit } from 'lucide-react';
-import { ModalType } from '../types/nexus';
+import { ModalType } from '../types/harvie';
 
 export const GhostSidebar: React.FC = () => {
-  const { activeModal, setActiveModal } = useNexus();
+  const { activeModal, setActiveModal } = useHarvie();
   const [isHovered, setIsHovered] = useState(false);
 
   const navItems: { id: ModalType; label: string; icon: React.ReactNode }[] = [

@@ -34,7 +34,7 @@ export const proactiveCards: WorkspaceCard[] = [
   {
     id: 'focus-reminder',
     kind: 'suggestion',
-    label: 'Nexus suggests',
+    label: 'Harvie suggests',
     title: 'Protect your focus block',
     description: 'Your afternoon is clear after 3:30 PM. Reserve it for the dashboard work.',
     action: 'Block time',

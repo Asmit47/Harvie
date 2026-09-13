@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { useNexus } from '../context/NexusContext';
+import { useHarvie } from '../context/HarvieContext';
 import { FloatingCard } from './FloatingCard';
 import { Clock, Zap, Trash2 } from 'lucide-react';
 
 export const ContextZones: React.FC = () => {
-  const { leftZoneItems, rightZoneItems, clearZone } = useNexus();
+  const { leftZoneItems, rightZoneItems, clearZone } = useHarvie();
 
   return (
     <>
