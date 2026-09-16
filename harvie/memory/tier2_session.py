@@ -1,15 +1,12 @@
-import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.postgres import PostgresSaver
 
 from harvie.core.config import settings
+from harvie.core.db import pool
 
-settings.SESSION_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-conn = sqlite3.connect(str(settings.SESSION_DB_PATH), check_same_thread=False)
-checkpointer = SqliteSaver(conn)
+checkpointer = PostgresSaver(pool)
 
 
 def generate_session_id() -> str:
@@ -22,7 +19,7 @@ def get_thread_config(session_id: str) -> dict:
     return {"configurable": {"thread_id": f"{settings.HARVIE_USER_ID}:{session_id}"}}
 
 
-def cleanup_expired_sessions():
+def cleanup_expired_sessions() -> None:
     """Delete checkpoint threads older than SESSION_TTL_HOURS."""
     try:
         cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.SESSION_TTL_HOURS)
@@ -38,16 +35,9 @@ def cleanup_expired_sessions():
         expired = [thread_id for thread_id, updated_at in latest_by_thread.items() if updated_at < cutoff]
         if not expired:
             return
-        cleanup_conn = sqlite3.connect(str(settings.SESSION_DB_PATH))
-        cursor = cleanup_conn.cursor()
-        placeholders = ", ".join("?" for _ in expired)
-        cursor.execute(f"DELETE FROM writes WHERE thread_id IN ({placeholders})", expired)
-        cursor.execute(f"DELETE FROM checkpoints WHERE thread_id IN ({placeholders})", expired)
-        deleted = cursor.rowcount
-        cleanup_conn.commit()
-        cleanup_conn.close()
-        if deleted > 0:
-            print(f"Cleaned up {deleted} expired checkpoint rows.")
+        for thread_id in expired:
+            checkpointer.delete_thread(thread_id)
+        print(f"Cleaned up {len(expired)} expired session threads.")
     except Exception as exc:
         print(f"Session cleanup skipped: {exc}")
 
@@ -78,6 +68,3 @@ def get_tier2_context(state: dict) -> str:
     if len(context) > settings.SESSION_CONTEXT_MAX_CHARS:
         return context[: settings.SESSION_CONTEXT_MAX_CHARS - 20] + "\n... [truncated]"
     return context
-
-
-cleanup_expired_sessions()

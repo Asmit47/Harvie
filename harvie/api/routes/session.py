@@ -1,4 +1,3 @@
-import sqlite3
 from datetime import datetime, timezone
 from typing import Any
 
@@ -92,7 +91,7 @@ def _latest_checkpoint_times() -> dict[str, tuple[str | None, str | None]]:
             if checkpoint_ts and (updated_at is None or checkpoint_ts > updated_at):
                 updated_at = checkpoint_ts
             times[thread_id] = (created_at, updated_at)
-    except sqlite3.Error:
+    except Exception:
         return {}
     return times
 

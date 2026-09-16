@@ -1,50 +1,18 @@
-"""Small SQLite store for work that outlives an ephemeral chat session."""
+"""PostgreSQL store for work that outlives an ephemeral chat session."""
 
-import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from harvie.core.config import settings
-
+from harvie.core.db import get_db_connection
 
 LOOP_TYPES = {"task", "commitment", "follow_up", "waiting", "unresolved"}
 LOOP_STATUSES = {"open", "completed", "snoozed"}
 PRIORITIES = {"low", "medium", "high"}
 
 
-def _connection() -> sqlite3.Connection:
-    settings.SESSION_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(settings.SESSION_DB_PATH))
-    conn.row_factory = sqlite3.Row
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS open_loops (
-        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL,
-        details TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open', priority TEXT NOT NULL DEFAULT 'medium',
-        due_at TEXT, snoozed_until TEXT, source_type TEXT, source_id TEXT,
-        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT)"""
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS open_loops_active ON open_loops(user_id, status, due_at)")
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS task_refs (
-        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, provider TEXT NOT NULL, external_id TEXT NOT NULL,
-        open_loop_id TEXT, url TEXT, metadata TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
-        UNIQUE(user_id, provider, external_id))"""
-    )
-    conn.execute("CREATE TABLE IF NOT EXISTS agent_state (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL)")
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS event_snapshots (
-        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, provider TEXT NOT NULL, external_id TEXT NOT NULL,
-        payload TEXT NOT NULL, observed_at TEXT NOT NULL, expires_at TEXT, UNIQUE(user_id, provider, external_id))"""
-    )
-    return conn
-
-
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-def _row(row: sqlite3.Row) -> dict:
-    return dict(row)
 
 
 def _valid_time(value: str | None) -> str | None:
@@ -57,32 +25,65 @@ def _valid_time(value: str | None) -> str | None:
     return value
 
 
-def create_open_loop(title: str, *, loop_type: str = "task", details: str = "", due_at: str | None = None,
-                     priority: str = "medium", source_type: str | None = None, source_id: str | None = None) -> dict:
+def create_open_loop(
+    title: str,
+    *,
+    loop_type: str = "task",
+    details: str = "",
+    due_at: str | None = None,
+    priority: str = "medium",
+    source_type: str | None = None,
+    source_id: str | None = None,
+) -> dict:
     if loop_type not in LOOP_TYPES:
         raise ValueError(f"type must be one of: {', '.join(sorted(LOOP_TYPES))}")
     if priority not in PRIORITIES:
         raise ValueError(f"priority must be one of: {', '.join(sorted(PRIORITIES))}")
     due_at = _valid_time(due_at)
     now, loop_id = _now(), uuid.uuid4().hex
-    with _connection() as conn:
-        conn.execute("INSERT INTO open_loops VALUES (?, ?, ?, ?, ?, 'open', ?, ?, NULL, ?, ?, ?, ?, NULL)",
-                     (loop_id, settings.HARVIE_USER_ID, loop_type, title.strip(), details.strip(), priority, due_at, source_type, source_id, now, now))
-        return _row(conn.execute("SELECT * FROM open_loops WHERE id = ?", (loop_id,)).fetchone())
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO open_loops (
+                    id, user_id, type, title, details, status, priority,
+                    due_at, snoozed_until, source_type, source_id, created_at, updated_at, completed_at
+                ) VALUES (%s, %s, %s, %s, %s, 'open', %s, %s, NULL, %s, %s, %s, %s, NULL)
+                """,
+                (
+                    loop_id,
+                    settings.HARVIE_USER_ID,
+                    loop_type,
+                    title.strip(),
+                    details.strip(),
+                    priority,
+                    due_at,
+                    source_type,
+                    source_id,
+                    now,
+                    now,
+                ),
+            )
+            cur.execute("SELECT * FROM open_loops WHERE id = %s", (loop_id,))
+            row = cur.fetchone()
+            return dict(row) if row else {}
 
 
 def list_open_loops(*, include_completed: bool = False, query: str = "", limit: int = 50) -> list[dict]:
-    sql = "SELECT * FROM open_loops WHERE user_id = ?"
+    sql = "SELECT * FROM open_loops WHERE user_id = %s"
     values: list = [settings.HARVIE_USER_ID]
     if not include_completed:
         sql += " AND status != 'completed'"
     if query.strip():
-        sql += " AND (title LIKE ? OR details LIKE ?)"
+        sql += " AND (title ILIKE %s OR details ILIKE %s)"
         values.extend([f"%{query.strip()}%", f"%{query.strip()}%"])
-    sql += " ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, COALESCE(due_at, '9999') LIMIT ?"
+    sql += " ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, COALESCE(due_at, '9999') LIMIT %s"
     values.append(max(1, min(limit, 100)))
-    with _connection() as conn:
-        return [_row(row) for row in conn.execute(sql, values).fetchall()]
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, values)
+            rows = cur.fetchall()
+            return [dict(row) for row in rows]
 
 
 def update_open_loop(loop_id: str, **changes: str | None) -> dict | None:
@@ -99,17 +100,24 @@ def update_open_loop(loop_id: str, **changes: str | None) -> dict | None:
     if "snoozed_until" in updates:
         updates["snoozed_until"] = _valid_time(updates["snoozed_until"])
     updates["updated_at"] = _now()
-    columns = ", ".join(f"{key} = ?" for key in updates)
-    with _connection() as conn:
-        conn.execute(f"UPDATE open_loops SET {columns} WHERE id = ? AND user_id = ?", [*updates.values(), loop_id, settings.HARVIE_USER_ID])
-        row = conn.execute("SELECT * FROM open_loops WHERE id = ? AND user_id = ?", (loop_id, settings.HARVIE_USER_ID)).fetchone()
-        return _row(row) if row else None
+    columns = ", ".join(f"{key} = %s" for key in updates)
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE open_loops SET {columns} WHERE id = %s AND user_id = %s",
+                [*updates.values(), loop_id, settings.HARVIE_USER_ID],
+            )
+            cur.execute("SELECT * FROM open_loops WHERE id = %s AND user_id = %s", (loop_id, settings.HARVIE_USER_ID))
+            row = cur.fetchone()
+            return dict(row) if row else None
 
 
 def get_open_loop(loop_id: str) -> dict | None:
-    with _connection() as conn:
-        row = conn.execute("SELECT * FROM open_loops WHERE id = ? AND user_id = ?", (loop_id, settings.HARVIE_USER_ID)).fetchone()
-        return _row(row) if row else None
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM open_loops WHERE id = %s AND user_id = %s", (loop_id, settings.HARVIE_USER_ID))
+            row = cur.fetchone()
+            return dict(row) if row else None
 
 
 def complete_open_loop(loop_id: str) -> dict | None:
@@ -123,10 +131,13 @@ def snooze_open_loop(loop_id: str, until: str) -> dict | None:
 def attention_open_loops() -> list[dict]:
     now = datetime.now(timezone.utc)
     cutoff = (now + timedelta(hours=settings.ATTENTION_LOOKAHEAD_HOURS)).isoformat()
-    with _connection() as conn:
-        rows = conn.execute(
-            """SELECT * FROM open_loops WHERE user_id = ? AND status != 'completed' AND due_at IS NOT NULL
-            AND due_at <= ? AND (status != 'snoozed' OR snoozed_until IS NULL OR snoozed_until <= ?)
-            ORDER BY due_at LIMIT ?""", (settings.HARVIE_USER_ID, cutoff, now.isoformat(), settings.OPEN_LOOP_CONTEXT_LIMIT)
-        ).fetchall()
-    return [_row(row) for row in rows]
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT * FROM open_loops WHERE user_id = %s AND status != 'completed' AND due_at IS NOT NULL
+                AND due_at <= %s AND (status != 'snoozed' OR snoozed_until IS NULL OR snoozed_until <= %s)
+                ORDER BY due_at LIMIT %s""",
+                (settings.HARVIE_USER_ID, cutoff, now.isoformat(), settings.OPEN_LOOP_CONTEXT_LIMIT),
+            )
+            rows = cur.fetchall()
+            return [dict(row) for row in rows]

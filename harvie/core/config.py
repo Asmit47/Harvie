@@ -23,15 +23,24 @@ def _env_int(key: str, default: int) -> int:
 
 
 class Settings:
+    DATABASE_URL: str = _env("DATABASE_URL", "")
     DEFAULT_HARVIE_USER_ID: str = _env("HARVIE_USER_ID", "default_user")
     HARVIE_API_PROXY_SECRET: str = _env("HARVIE_API_PROXY_SECRET", "")
+    HARVIE_ALLOWED_ORIGINS: str = _env("HARVIE_ALLOWED_ORIGINS", "")
+
+    @property
+    def NORMALIZED_DATABASE_URL(self) -> str:
+        """Render supplies postgres://, whereas psycopg prefers postgresql://."""
+        url = self.DATABASE_URL.strip()
+        if url.startswith("postgres://"):
+            return "postgresql://" + url[len("postgres://"):]
+        return url
 
     @property
     def HARVIE_USER_ID(self) -> str:
         return get_request_user_id() or self.DEFAULT_HARVIE_USER_ID
 
     PERSONA_JSON_PATH: Path = PROJECT_ROOT / "harvie" / "memory" / "persona.json"
-    SESSION_DB_PATH: Path = PROJECT_ROOT / "data" / "sessions.sqlite"
 
     SESSION_TTL_HOURS: int = _env_int("SESSION_TTL_HOURS", 48)
     SESSION_CONTEXT_MAX_CHARS: int = _env_int("SESSION_CONTEXT_MAX_CHARS", 12000)

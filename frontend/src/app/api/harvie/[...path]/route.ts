@@ -1,9 +1,16 @@
 import { auth } from '@clerk/nextjs/server';
 
-const backendUrl = process.env.HARVIE_API_URL || 'http://localhost:8000';
+const isProduction = process.env.NODE_ENV === 'production';
+const backendUrl = process.env.HARVIE_API_URL || (isProduction ? '' : 'http://localhost:8000');
 const proxySecret = process.env.HARVIE_API_PROXY_SECRET;
 
 async function forward(request: Request, context: { params: Promise<{ path: string[] }> }) {
+  if (!backendUrl) {
+    return Response.json(
+      { detail: 'HARVIE_API_URL is required in production but is not configured.' },
+      { status: 500 },
+    );
+  }
   const { userId } = await auth();
   if (!userId) {
     return Response.json({ detail: 'Authentication required.' }, { status: 401 });
