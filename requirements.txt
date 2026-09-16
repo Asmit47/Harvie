@@ -9,7 +9,8 @@ langchain-nvidia-ai-endpoints
 langchain-community
 langchain-huggingface
 langchain-text-splitters
-langgraph-checkpoint-sqlite
+langgraph-checkpoint-postgres
+psycopg[binary,pool]
 langsmith
 fastapi
 uvicorn[standard]

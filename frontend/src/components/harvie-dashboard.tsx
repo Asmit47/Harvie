@@ -80,12 +80,50 @@ export function HarvieDashboard() {
   });
 
   const handleSendComplete = useCallback(
-    async (response: ChatApiResponse) => {
-      if (response.session_id) {
-        activateSession(response.session_id);
+    async (response: ChatApiResponse, sentMessage: string) => {
+      const sessionId = response.session_id;
+      if (sessionId) {
+        queryClient.setQueryData<SessionDetail>(['session', sessionId], (prev) => {
+          const now = new Date().toISOString();
+          if (!prev) {
+            return {
+              id: sessionId,
+              title: sentMessage.slice(0, 60),
+              created_at: now,
+              updated_at: now,
+              message_count: 2,
+              preview: response.answer.slice(0, 160),
+              conversation_history: [
+                { role: 'user', content: sentMessage },
+                { role: 'assistant', content: response.answer },
+              ],
+              current_task: null,
+            };
+          }
+
+          const history = prev.conversation_history || [];
+          const hasUserMessage =
+            history.length > 0 &&
+            history[history.length - 1].role === 'user' &&
+            history[history.length - 1].content === sentMessage;
+
+          const newHistory = hasUserMessage
+            ? [...history, { role: 'assistant', content: response.answer }]
+            : [...history, { role: 'user', content: sentMessage }, { role: 'assistant', content: response.answer }];
+
+          return {
+            ...prev,
+            id: sessionId,
+            updated_at: now,
+            message_count: newHistory.length,
+            preview: response.answer.slice(0, 160),
+            conversation_history: newHistory,
+          };
+        });
+
+        activateSession(sessionId);
       }
 
-      await queryClient.invalidateQueries({ queryKey: ['session', response.session_id] });
       await queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
     [activateSession, queryClient],
@@ -117,8 +155,8 @@ export function HarvieDashboard() {
         return { previousSession };
       }
     },
-    onSuccess: async (response) => {
-      await handleSendComplete(response);
+    onSuccess: async (response, variables) => {
+      await handleSendComplete(response, variables.message);
     },
     onError: (error, variables, context) => {
       setConversationNotice(error instanceof Error ? error.message : 'I could not reach the agent service.');
