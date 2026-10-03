@@ -32,7 +32,12 @@ def cleanup_expired_sessions() -> None:
             thread_id = checkpoint_tuple.config["configurable"]["thread_id"]
             latest_by_thread[thread_id] = max(latest_by_thread.get(thread_id, observed_at), observed_at)
 
-        expired = [thread_id for thread_id, updated_at in latest_by_thread.items() if updated_at < cutoff]
+        # The welcome transcript is also the resumable onboarding state. Keep it
+        # until the user explicitly deletes it, including after completion.
+        expired = [
+            thread_id for thread_id, updated_at in latest_by_thread.items()
+            if updated_at < cutoff and not thread_id.endswith(":welcome")
+        ]
         if not expired:
             return
         for thread_id in expired:
@@ -54,17 +59,28 @@ def get_tier2_context(state: dict) -> str:
     if summary:
         parts.append(f"Session summary:\n{summary}")
 
-    if history:
-        parts.append("Recent conversation:")
-        for turn in history:
-            role = turn.get("role", "unknown")
-            content = turn.get("content", "")
-            label = "You" if role == "user" else "Harvie"
-            parts.append(f"  [{label}]: {content}")
-    else:
-        parts.append("No conversation history yet (new session).")
+    limit = settings.SESSION_CONTEXT_MAX_CHARS
+    if not history:
+        return "\n".join(parts + ["No conversation history yet (new session)."])[:limit]
 
-    context = "\n".join(parts)
-    if len(context) > settings.SESSION_CONTEXT_MAX_CHARS:
-        return context[: settings.SESSION_CONTEXT_MAX_CHARS - 20] + "\n... [truncated]"
-    return context
+    # The welcome thread can live indefinitely. Bound model context using its
+    # newest turns, while keeping the complete transcript in the checkpoint.
+    prefix = "\n".join(parts)[: limit // 2]
+    heading = "Recent conversation:"
+    omitted = "... [older turns omitted]"
+    budget = max(0, limit - len(prefix) - len(heading) - len(omitted) - 3)
+    recent = []
+    for turn in reversed(history):
+        label = "You" if turn.get("role") == "user" else "Harvie"
+        line = f"  [{label}]: {turn.get('content', '')}"
+        if len(line) + 1 > budget:
+            if not recent and budget > 20:
+                recent.append(line[: budget - 16] + "... [truncated]")
+            break
+        recent.append(line)
+        budget -= len(line) + 1
+    recent.reverse()
+    lines = ([prefix] if prefix else []) + [heading]
+    if len(recent) < len(history):
+        lines.append(omitted)
+    return "\n".join(lines + recent)[:limit]

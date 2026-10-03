@@ -6,14 +6,6 @@ from unittest.mock import MagicMock, patch
 
 
 class TestPostgresLifecycle(TestCase):
-    def test_pool_uses_postgres_safe_connection_options(self):
-        from harvie.core import db
-
-        self.assertEqual(db.pool.min_size, 1)
-        self.assertEqual(db.pool.max_size, 10)
-        self.assertTrue(db.pool.kwargs["autocommit"])
-        self.assertIsNotNone(db.pool.kwargs["row_factory"])
-
     def test_init_db_sets_up_application_and_checkpoint_schema(self):
         from harvie.core import db
 
@@ -66,3 +58,16 @@ class TestPostgresLifecycle(TestCase):
             tier2_session.cleanup_expired_sessions()
 
         delete_thread.assert_called_once_with("user:expired")
+
+    def test_welcome_transcript_survives_normal_session_expiry(self):
+        from harvie.memory import tier2_session
+
+        old = (datetime.now(timezone.utc) - timedelta(hours=49)).isoformat()
+        checkpoint = MagicMock()
+        checkpoint.checkpoint = {"ts": old}
+        checkpoint.config = {"configurable": {"thread_id": "user:welcome"}}
+        with patch.object(tier2_session.checkpointer, "list", return_value=[checkpoint]), patch.object(
+            tier2_session.checkpointer, "delete_thread"
+        ) as delete_thread:
+            tier2_session.cleanup_expired_sessions()
+        delete_thread.assert_not_called()

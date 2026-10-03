@@ -573,17 +573,23 @@ input:focus-visible {
   position: relative;
   top: auto;
   left: auto;
-  width: 100%;
+  width: calc(100% - 140px);
   max-width: 760px;
-  margin: 8px auto 44px;
+  margin: 84px auto 120px;
+}
+
+.harvie-sidebar-open ~ .conversation-panel {
+  width: calc(100% - 324px);
+  margin-left: 292px;
+  margin-right: 32px;
 }
 
 .conversation-thread {
   display: grid;
   gap: 22px;
-  max-height: calc(100dvh - 220px);
+  max-height: calc(100dvh - 230px);
   overflow: auto;
-  padding: 4px 0 140px;
+  padding: 4px 4px 24px;
   scrollbar-width: none;
 }
 .conversation-thread::-webkit-scrollbar {
@@ -602,7 +608,7 @@ input:focus-visible {
 }
 
 .conversation-message {
-  max-width: min(100%, 42ch);
+  max-width: min(100%, 68ch);
 }
 
 .conversation-message-user {
@@ -616,7 +622,9 @@ input:focus-visible {
 
 .conversation-message-assistant {
   justify-self: start;
-  padding-right: 24px;
+  border-radius: 20px 20px 20px 5px;
+  padding: 14px 18px;
+  background: #1c1c1f;
 }
 
 .conversation-message p {
@@ -624,6 +632,158 @@ input:focus-visible {
   color: #e4e4e7;
   font-size: 15px;
   line-height: 1.62;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.conversation-choices {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.conversation-choices button,
+.conversation-retry {
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 11px 13px;
+  color: #e4e4e7;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+}
+
+.conversation-choices button:hover:not(:disabled),
+.conversation-retry:hover:not(:disabled) {
+  border-color: #a3e635;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.conversation-choices button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.conversation-retry {
+  margin-top: 12px;
+}
+
+.connection-card-group {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 380px);
+  margin-top: 16px;
+}
+
+.connection-card-group h3 {
+  margin: 0;
+  color: #f4f4f5;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.connection-card {
+  min-width: 0;
+  border-radius: 16px;
+  padding: 14px;
+  background: #27272a;
+}
+
+.connection-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.connection-card-heading strong,
+.connection-card-heading span:not(.connection-card-icon):not(.connection-calendar-icon) {
+  display: block;
+}
+
+.connection-card-heading strong {
+  color: #fafafa;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.connection-card-heading div > span {
+  margin-top: 3px;
+  color: #a1a1aa;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.connection-card-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  place-items: center;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.connection-card-icon svg {
+  width: 30px;
+  height: 26px;
+}
+
+.connection-calendar-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-top: 5px solid #1967d2;
+  border-radius: 4px;
+  color: #ffffff;
+  background: #4285f4;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.connection-card-action {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 13px;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #52525b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.connection-card-action:hover:not(:disabled) {
+  background: #71717a;
+}
+
+.connection-card-action:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.connection-card-link {
+  display: inline-block;
+  margin-top: 12px;
+  color: #d9f99d;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.connection-card p.connection-card-notice,
+.connection-card p.connection-card-error {
+  margin-top: 10px;
+  color: #a1a1aa;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.connection-card p.connection-card-error {
+  color: #fda4af;
 }
 
 .conversation-message-user p {
@@ -1007,11 +1167,6 @@ input:focus-visible {
 }
 
 @media (max-width: 900px) {
-  .conversation-panel {
-    left: 86px;
-    width: 240px;
-  }
-
   .workspace-card-shell {
     width: 260px;
   }
@@ -1077,7 +1232,8 @@ input:focus-visible {
     margin-left: 0;
   }
 
-  .conversation-panel {
+  .conversation-panel,
+  .harvie-sidebar-open ~ .conversation-panel {
     position: relative;
     top: auto;
     left: auto;
@@ -1162,4 +1318,13 @@ input:focus-visible {
     background: #18181b;
     backdrop-filter: none;
   }
+}
+
+.nucleus-render {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  translate: -50% -50%;
+  pointer-events: none;
 }

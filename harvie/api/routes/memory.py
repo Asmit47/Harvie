@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import time
 
-from harvie.memory.tier1_persona import load_persona_json
+from harvie.memory.tier1_persona import load_persona
 from harvie.memory.tier3_knowledge import knowledge_base
 
 router = APIRouter()
@@ -26,22 +26,22 @@ def get_memory() -> MemoryResponse:
     ts = time.strftime("%Y-%m-%d %H:%M")
 
     # 1. Persona preferences & goals
-    persona = load_persona_json()
-    if persona.get("role"):
+    persona = load_persona()
+    if persona.get("job"):
         memories.append(
             MemoryEntryDTO(
                 id="mem-persona-role",
                 category="Identity & Role",
-                fact=persona["role"],
+                fact=persona["job"],
                 timestamp=ts,
             )
         )
-    if persona.get("communication_preferences"):
+    if persona.get("communication_style"):
         memories.append(
             MemoryEntryDTO(
                 id="mem-persona-comm",
                 category="Preferences",
-                fact=f"Communication: {persona['communication_preferences']}",
+                fact=f"Communication: {persona['communication_style']}",
                 timestamp=ts,
             )
         )
@@ -58,22 +58,5 @@ def get_memory() -> MemoryResponse:
                     timestamp=ts,
                 )
             )
-
-    # Default fallback if no memories exist yet
-    if not memories:
-        memories = [
-            MemoryEntryDTO(
-                id="mem-fallback-1",
-                category="Preferences",
-                fact="User prefers concise technical summaries over verbose chat.",
-                timestamp="Today",
-            ),
-            MemoryEntryDTO(
-                id="mem-fallback-2",
-                category="Work context",
-                fact="Project 'Harvie' uses LangGraph backend orchestration & Next.js spatial UI.",
-                timestamp="Today",
-            ),
-        ]
 
     return MemoryResponse(memories=memories)

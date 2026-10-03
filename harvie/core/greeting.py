@@ -7,30 +7,21 @@ detection and the message text are kept separate so both are easy to tweak.
 
 from __future__ import annotations
 
-import random
 from datetime import datetime
 
 #: One-line greeting variants per time period. Edit freely.
 GREETINGS: dict[str, tuple[str, ...]] = {
     "morning": (
-        "Morning, boss. What are we getting into today?",
-        "Morning, boss. What's first on the list?",
-        "Morning, boss. What are we knocking out?",
+        "Good morning. What are we working on?",
     ),
     "afternoon": (
-        "Afternoon, boss. What needs your attention?",
-        "Afternoon, boss. What's next on the list?",
-        "Afternoon, boss. What should I dig into?",
+        "Hi. What needs your attention?",
     ),
     "evening": (
-        "Evening, boss. What are we working on?",
-        "Evening, boss. What's still open?",
-        "Evening, boss. What do we need to wrap up?",
+        "Good evening. What are we working on?",
     ),
     "late_night": (
-        "Still up, boss? What's on the list?",
-        "Late night, boss. What do we need done?",
-        "Still going, boss? What's next?",
+        "Hi. What should we finish up?",
     ),
 }
 
@@ -53,5 +44,5 @@ def get_time_period(now: datetime | None = None) -> str:
 
 
 def get_greeting(now: datetime | None = None) -> str:
-    """Pick a greeting variation for the current time period."""
-    return random.choice(GREETINGS[get_time_period(now)])
+    """Return one quiet boot greeting for the current time period."""
+    return GREETINGS[get_time_period(now)][0]

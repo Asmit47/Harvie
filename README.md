@@ -2,7 +2,7 @@
 
 Harvie is a LangGraph business assistant with three memory tiers:
 
-- Tier 1: stable persona from `harvie/memory/persona.json`.
+- Tier 1: per-user persona fields with source, confidence, and status metadata in PostgreSQL.
 - Tier 2: session working memory through a PostgreSQL LangGraph checkpointer.
 - Tier 3: optional Supermemory knowledge search/save tools.
 
@@ -27,6 +27,15 @@ brew install postgresql@16
 brew services start postgresql@16
 createdb harvie
 ```
+# Stop PostgreSQL (frees up port 5432, saves RAM)
+brew services stop postgresql@16
+# Start it again
+brew services start postgresql@16
+# Restart
+brew services restart postgresql@16
+# Check status
+brew services list | grep postgres
+
 
 Fill in `GROQ_API_KEY` for the primary chat model and `GOOGLE_API_KEY` for the Gemini fallback/small-check model. `SUPERMEMORY_API_KEY` is optional; Harvie continues with persona and session memory when it is missing. The default chat model is Groq `openai/gpt-oss-120b`; the default fallback model is `gemini-3.5-flash`.
 
@@ -37,7 +46,18 @@ DATABASE_URL=postgresql://localhost:5432/harvie
 ```
 
 Gmail and Google Calendar tools use Composio direct tool execution. Set
-`COMPOSIO_API_KEY` and connect Gmail/Calendar in Composio for `COMPOSIO_USER_ID`.
+`COMPOSIO_API_KEY`; production connections are scoped to the authenticated Clerk
+user ID. `COMPOSIO_USER_ID` is only an optional local CLI fallback.
+
+Each authenticated account has its own persona profile in PostgreSQL. New
+accounts open directly in the dashboard: Harvie messages first, asks for a name,
+and offers Gmail and Calendar connection cards inside the conversation. Welcome
+replies are scripted; unrelated questions and
+tasks use the normal LLM/tool flow. Progress, suggestions, and cards survive reloads
+in the user's welcome thread. Other
+persona fields start as unknown placeholders and can be filled or updated from
+relevant user messages over time. Conversation text itself is not copied into
+the persona record.
 
 Authorize Google integrations from the CLI:
 
@@ -51,6 +71,19 @@ python -m harvie auth calendar
 ```bash
 uvicorn harvie.api.main:app --reload --port 8000
 ```
+
+## Run The Frontend
+
+In another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The app runs at `http://localhost:3000`. Configure Clerk keys and the backend
+proxy settings in the frontend environment before signing in.
 
 Health check:
 
@@ -79,6 +112,17 @@ curl -X POST http://localhost:8000/session/close \
 ```
 
 The direct API endpoints require these proxy headers. The browser UI supplies them through the same-origin Next.js proxy.
+
+## Run Tests
+
+With the project virtual environment activated:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
+```
+
+The suite covers API authentication, account isolation, onboarding and retry
+behavior, and PostgreSQL session lifecycle.
 
 #kill the api- lsof -ti :8000 | xargs kill
 

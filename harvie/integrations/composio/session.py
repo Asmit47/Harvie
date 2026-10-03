@@ -17,6 +17,7 @@ from typing import Any, Callable
 from langsmith import traceable
 
 from harvie.core.config import settings
+from harvie.core.identity import get_request_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +107,16 @@ class ComposioSessionManager:
             raise self._map_exception(exc) from exc
         return self._composio
 
+    def _resolve_user_id(self, user_id: str | None = None) -> str:
+        """Use the authenticated request identity; retain an explicit CLI fallback."""
+        uid = user_id or get_request_user_id() or self.user_id
+        if not uid:
+            raise ConfigurationError("No authenticated Harvie user is available for Composio.")
+        return uid
+
     def get_session(self, user_id: str | None = None) -> Any:
         """Return a cached Composio session for a Harvie user."""
-        uid = user_id or self.user_id
+        uid = self._resolve_user_id(user_id)
         if uid in self._sessions:
             return self._sessions[uid]
 
@@ -147,7 +155,7 @@ class ComposioSessionManager:
 
     def is_connected(self, toolkit: str, user_id: str | None = None) -> bool:
         """Return whether a toolkit has an active connection in the session."""
-        uid = user_id or self.user_id
+        uid = self._resolve_user_id(user_id)
         logger.debug("is_connected: user_id=%s toolkit=%s", uid, toolkit)
         session = self.get_session(user_id)
         try:
@@ -174,7 +182,7 @@ class ComposioSessionManager:
 
     def _authorize_raw(self, toolkit: str, user_id: str | None = None) -> Any:
         """Create an authorization request and return the raw ConnectionRequest."""
-        uid = user_id or self.user_id
+        uid = self._resolve_user_id(user_id)
         logger.debug("authorize: user_id=%s toolkit=%s", uid, toolkit)
         session = self.get_session(user_id)
         try:
@@ -233,7 +241,7 @@ class ComposioSessionManager:
         account: str | None = None,
     ) -> str:
         """Execute a session-scoped tool after connection checks and retries."""
-        uid = user_id or self.user_id
+        uid = self._resolve_user_id(user_id)
         logger.debug(
             "execute: user_id=%s toolkit=%s tool=%s", uid, toolkit, tool_slug,
         )
@@ -273,8 +281,6 @@ class ComposioSessionManager:
         missing = []
         if not self.api_key:
             missing.append("COMPOSIO_API_KEY")
-        if not self.user_id:
-            missing.append("COMPOSIO_USER_ID")
         if missing:
             names = ", ".join(missing)
             raise ConfigurationError(f"Missing {names}. Add it to .env.")

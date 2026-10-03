@@ -1,213 +1,136 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ConversationPanel } from '@/components/conversation-panel';
 import { HarvieCommandBar } from '@/components/harvie-command-bar';
 import { NucleusShell } from './nucleus-shell';
 import { HarvieSidebar } from '@/components/harvie-sidebar';
-import { api, type ChatApiResponse, type SessionDetail, type SessionSummary } from '@/lib/api';
+import { api, ApiError, type MessageChoice, type SessionDetail, type WorkspaceResponse } from '@/lib/api';
+import { ConnectionsPanel } from '@/components/connections-panel';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 
-export function HarvieDashboard() {
+export function HarvieDashboard({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const [conversationNotice, setConversationNotice] = useState<string | null>(null);
-  const [activated, setActivated] = useState(false);
+  const [showConnections, setShowConnections] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [failedSend, setFailedSend] = useState<{ message: string; sessionId: string; requestId: string; choice?: MessageChoice } | null>(null);
+  const sendingRef = useRef(false);
   const sidebarOpen = useWorkspaceStore((state) => state.sidebarOpen);
   const setSidebarOpen = useWorkspaceStore((state) => state.setSidebarOpen);
-  const activeSessionId = useWorkspaceStore((state) => state.activeSessionId);
-  const setActiveSessionId = useWorkspaceStore((state) => state.setActiveSessionId);
   const setAgentStatus = useWorkspaceStore((state) => state.setAgentStatus);
-  const sessionsQuery = useQuery({
-    queryKey: ['sessions'],
-    queryFn: api.listSessions,
+
+  const workspaceQuery = useQuery({
+    queryKey: ['workspace', userId],
+    queryFn: api.startChat,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
     retry: 1,
   });
+
+  const sessionId = workspaceQuery.data?.session.id;
+
   const activeSessionQuery = useQuery({
-    queryKey: ['session', activeSessionId],
-    queryFn: () => api.getSession(activeSessionId as string),
-    enabled: Boolean(activeSessionId),
+    queryKey: ['session', userId, sessionId],
+    queryFn: () => api.getSession(sessionId!),
+    enabled: Boolean(sessionId),
+    initialData: () => workspaceQuery.data?.session,
+    initialDataUpdatedAt: workspaceQuery.dataUpdatedAt,
     retry: 1,
   });
 
-  const activateSession = useCallback(
-    (sessionId: string) => {
-      setActivated(true);
-      setActiveSessionId(sessionId);
-      setConversationNotice(null);
-    },
-    [setActiveSessionId],
-  );
-
-  const newChatMutation = useMutation({
-    mutationFn: () => api.createSession(),
-    onSuccess: async (session) => {
-      queryClient.setQueryData(['session', session.id], session);
-      activateSession(session.id);
-      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
-    },
-  });
-
-  const renameSessionMutation = useMutation({
-    mutationFn: ({ sessionId, title }: { sessionId: string; title: string }) => api.renameSession(sessionId, title),
-    onSuccess: async (session) => {
-      queryClient.setQueryData(['session', session.id], session);
-      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
-    },
-  });
-
-  const deleteSessionMutation = useMutation({
-    mutationFn: (sessionId: string) => api.deleteSession(sessionId),
-    onSuccess: async (_result, deletedSessionId) => {
-      queryClient.removeQueries({ queryKey: ['session', deletedSessionId] });
-      const currentSessions = queryClient.getQueryData<SessionSummary[]>(['sessions']) ?? [];
-      const remainingSessions = currentSessions.filter((session) => session.id !== deletedSessionId);
-      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
-
-      if (activeSessionId !== deletedSessionId) return;
-
-      const nextSession = remainingSessions[0];
-      if (nextSession) {
-        activateSession(nextSession.id);
-        return;
-      }
-
-      const session = await api.createSession();
-      queryClient.setQueryData(['session', session.id], session);
-      activateSession(session.id);
-      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
-    },
-  });
-
-  const handleSendComplete = useCallback(
-    async (response: ChatApiResponse, sentMessage: string) => {
-      const sessionId = response.session_id;
-      if (sessionId) {
-        queryClient.setQueryData<SessionDetail>(['session', sessionId], (prev) => {
-          const now = new Date().toISOString();
-          if (!prev) {
-            return {
-              id: sessionId,
-              title: sentMessage.slice(0, 60),
-              created_at: now,
-              updated_at: now,
-              message_count: 2,
-              preview: response.answer.slice(0, 160),
-              conversation_history: [
-                { role: 'user', content: sentMessage },
-                { role: 'assistant', content: response.answer },
-              ],
-              current_task: null,
-            };
-          }
-
-          const history = prev.conversation_history || [];
-          const hasUserMessage =
-            history.length > 0 &&
-            history[history.length - 1].role === 'user' &&
-            history[history.length - 1].content === sentMessage;
-
-          const newHistory = hasUserMessage
-            ? [...history, { role: 'assistant', content: response.answer }]
-            : [...history, { role: 'user', content: sentMessage }, { role: 'assistant', content: response.answer }];
-
-          return {
-            ...prev,
-            id: sessionId,
-            updated_at: now,
-            message_count: newHistory.length,
-            preview: response.answer.slice(0, 160),
-            conversation_history: newHistory,
-          };
-        });
-
-        activateSession(sessionId);
-      }
-
-      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
-    },
-    [activateSession, queryClient],
-  );
-
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const acceptWorkspace = useCallback((workspace: WorkspaceResponse) => {
+    queryClient.setQueryData(['workspace', userId], workspace);
+    queryClient.setQueryData(['session', userId, workspace.session.id], workspace.session);
+  }, [queryClient, userId]);
 
   const sendMessageMutation = useMutation({
-    mutationFn: ({ message, sessionId }: { message: string; sessionId: string | null }) => api.sendMessage(message, sessionId || undefined),
-    onMutate: async ({ message, sessionId }) => {
+    mutationFn: ({ message, sessionId, requestId, choice }: { message: string; sessionId: string; requestId: string; choice?: MessageChoice }) => api.sendMessage(message, sessionId, requestId, choice),
+    onMutate: async ({ message, sessionId, requestId }) => {
       setAgentStatus('thinking');
       setConversationNotice(null);
+      setFailedSend(null);
       setPendingMessage(message);
-
-      if (sessionId) {
-        await queryClient.cancelQueries({ queryKey: ['session', sessionId] });
-        const previousSession = queryClient.getQueryData<SessionDetail>(['session', sessionId]);
-
-        if (previousSession) {
-          queryClient.setQueryData<SessionDetail>(['session', sessionId], {
-            ...previousSession,
-            conversation_history: [
-              ...previousSession.conversation_history,
-              { role: 'user', content: message },
-            ],
-          });
-        }
-
-        return { previousSession };
-      }
+      await queryClient.cancelQueries({ queryKey: ['session', userId, sessionId] });
+      queryClient.setQueryData<SessionDetail>(['session', userId, sessionId], (previous) => {
+        if (!previous || previous.conversation_history.some((turn) => turn.id === `user:${requestId}`)) return previous;
+        return {
+          ...previous,
+          conversation_history: [...previous.conversation_history, { id: `user:${requestId}`, role: 'user', content: message, source: 'user' }],
+        };
+      });
     },
-    onSuccess: async (response, variables) => {
-      await handleSendComplete(response, variables.message);
+    onSuccess: (response) => {
+      acceptWorkspace(response);
+      void queryClient.invalidateQueries({ queryKey: ['sessions', userId] });
     },
-    onError: (error, variables, context) => {
+    onError: async (error, variables) => {
       setConversationNotice(error instanceof Error ? error.message : 'I could not reach the agent service.');
-      if (variables.sessionId && context?.previousSession) {
-        queryClient.setQueryData(['session', variables.sessionId], context.previousSession);
-      }
+      setFailedSend(error instanceof ApiError && error.status >= 400 && error.status < 500 ? null : variables);
+      await queryClient.invalidateQueries({ queryKey: ['session', userId, variables.sessionId] });
     },
     onSettled: () => {
+      sendingRef.current = false;
       setAgentStatus('idle');
       setPendingMessage(null);
     },
   });
 
   const sendMessage = useCallback(
-    (message: string) => {
+    (message: string, choice?: MessageChoice) => {
       const command = message.trim();
-      if (!command || sendMessageMutation.isPending) return;
-      setActivated(true);
-      setPendingMessage(command);
-      sendMessageMutation.mutate({ message: command, sessionId: activeSessionId });
+      if (!command || !sessionId || sendingRef.current) return;
+      sendingRef.current = true;
+      sendMessageMutation.mutate({ message: command, sessionId, requestId: crypto.randomUUID(), choice });
     },
-    [activeSessionId, sendMessageMutation],
+    [sessionId, sendMessageMutation],
   );
+
+  const session = activeSessionQuery.data ?? workspaceQuery.data?.session;
+  const loading = workspaceQuery.isPending || !session;
+  const loadError = workspaceQuery.isError || activeSessionQuery.isError;
+  const lastUserTurn = [...(session?.conversation_history ?? [])].reverse().find((turn) => turn.role === 'user');
+  const interruptedSend = !sendMessageMutation.isPending && lastUserTurn?.id?.startsWith('user:') && session && !session.conversation_history.some((turn) => turn.reply_to === lastUserTurn.id) ? {
+    message: lastUserTurn.content,
+    sessionId: session.id,
+    requestId: lastUserTurn.id.slice('user:'.length),
+    choice: lastUserTurn.prompt_id && lastUserTurn.choice_id ? { promptId: lastUserTurn.prompt_id, choiceId: lastUserTurn.choice_id } : undefined,
+  } : null;
+  const retryableSend = failedSend ?? interruptedSend;
+  const placeholder = session?.onboarding_stage === 'name' ? 'Your name, or ask me anything' : 'What are we working on?';
 
   return (
     <main className="harvie-workspace">
       <HarvieSidebar
         open={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
-        sessions={sessionsQuery.data ?? []}
-        activeSessionId={activeSessionId}
-        sessionsLoading={sessionsQuery.isLoading}
-        onNewChat={() => newChatMutation.mutate()}
-        onSelectSession={activateSession}
-        onRenameSession={(sessionId, title) => renameSessionMutation.mutate({ sessionId, title })}
-        onDeleteSession={(sessionId) => deleteSessionMutation.mutate(sessionId)}
+        onConnectionsClick={() => setShowConnections(true)}
       />
-      {activated && <ConversationPanel
-        session={activeSessionQuery.data}
-        error={activeSessionQuery.isError ? 'Could not load this session.' : null}
-        notice={conversationNotice}
+      {showConnections && <ConnectionsPanel userId={userId} onClose={() => setShowConnections(false)} />}
+      <ConversationPanel
+        userId={userId}
+        session={session}
+        loading={loading && !loadError}
+        error={loadError ? 'Could not open your conversation. Try again.' : null}
+        notice={conversationNotice ?? (interruptedSend ? 'Your last message is saved without a reply. Try again to continue.' : null)}
         pendingUserMessage={pendingMessage}
         isThinking={sendMessageMutation.isPending}
-      />}
+        onSend={sendMessage}
+        onConnectionComplete={acceptWorkspace}
+        onRetry={loadError ? () => { void workspaceQuery.refetch(); if (sessionId) void activeSessionQuery.refetch(); } : retryableSend ? () => {
+          if (sendingRef.current) return;
+          sendingRef.current = true;
+          sendMessageMutation.mutate(retryableSend);
+        } : undefined}
+      />
       <NucleusShell
-        phase={activated ? 'active' : 'idle'}
+        phase="active"
       />
       <HarvieCommandBar
-        sending={sendMessageMutation.isPending}
+        sending={sendMessageMutation.isPending || loading || loadError}
         onSend={sendMessage}
-        boot={!activated}
+        placeholder={placeholder}
       />
     </main>
   );

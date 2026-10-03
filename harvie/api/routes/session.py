@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Response, status
 from pydantic import BaseModel, Field
@@ -8,13 +8,38 @@ from harvie.core.config import settings
 from harvie.core.graph import compiled_graph
 from harvie.entrypoints.cli import close_session
 from harvie.memory.tier2_session import checkpointer, generate_session_id, get_thread_config
+from harvie.integrations.catalog import Toolkit
 
 router = APIRouter()
 
 
+class ConversationChoice(BaseModel):
+    id: str
+    label: str
+    value: str
+    kind: Literal["onboarding", "message"] = "message"
+    stage: Literal["name", "connections", "complete"] | None = None
+
+
+class ConnectionCard(BaseModel):
+    toolkit: Toolkit
+    label: str
+    description: str
+    resume_message: str | None = None
+
+
 class ConversationTurn(BaseModel):
+    id: str | None = None
     role: str
     content: str
+    source: str | None = None
+    created_at: str | None = None
+    reply_to: str | None = None
+    prompt_id: str | None = None
+    choice_id: str | None = None
+    reveal_on_first_visit: bool = False
+    choices: list[ConversationChoice] = Field(default_factory=list)
+    connections: list[ConnectionCard] = Field(default_factory=list)
 
 
 class SessionSummary(BaseModel):
@@ -29,6 +54,7 @@ class SessionSummary(BaseModel):
 class SessionDetail(SessionSummary):
     conversation_history: list[ConversationTurn] = Field(default_factory=list)
     current_task: str | None = None
+    onboarding_stage: Literal["name", "connections", "complete"] | None = None
 
 
 class CreateSessionRequest(BaseModel):
@@ -173,13 +199,14 @@ def get_session(session_id: str) -> SessionDetail:
         history = []
 
     return SessionDetail(
-        **summary.dict(),
+        **summary.model_dump(),
         conversation_history=[
-            ConversationTurn(role=str(turn.get("role", "")), content=str(turn.get("content", "")))
+            ConversationTurn(**turn)
             for turn in history
             if isinstance(turn, dict)
         ],
         current_task=state.get("current_task"),
+        onboarding_stage=state.get("onboarding_stage"),
     )
 
 
@@ -201,14 +228,13 @@ def create_session(request: CreateSessionRequest | None = None) -> SessionDetail
 
 @router.patch("/sessions/{session_id}", response_model=SessionDetail)
 def rename_session(session_id: str, request: RenameSessionRequest) -> SessionDetail:
-    state, _, _ = _require_session(session_id)
+    _require_session(session_id)
     title = request.title.strip()
     if not title:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Title cannot be blank")
     compiled_graph.update_state(
         get_thread_config(session_id),
         {
-            **state,
             "session_title": title,
             "session_updated_at": _now_iso(),
         },

@@ -19,6 +19,9 @@ class HarvieState(TypedDict, total=False):
     session_title: str
     session_created_at: str
     session_updated_at: str
+    onboarding_stage: str
+    pending_profile_update: dict | None
+    chat_request_id: str | None
 
     # Tool-call loop
     messages: List[Any]

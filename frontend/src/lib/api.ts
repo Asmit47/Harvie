@@ -8,11 +8,58 @@ export interface ChatApiResponse {
   session_id: string;
   cards: FloatingCardItem[];
   has_tool_calls: boolean;
+  connection_request?: ConnectionRequest | null;
+  session: SessionDetail;
+  profile: PersonaProfile;
+  response_source: 'onboarding' | 'llm' | 'system';
+}
+
+export type Toolkit = 'gmail' | 'googlecalendar';
+export type OnboardingStage = 'name' | 'connections' | 'complete';
+
+export interface ConnectionCardData {
+  toolkit: Toolkit;
+  label: string;
+  description: string;
+  resume_message?: string | null;
+}
+
+export interface ConversationChoice {
+  id: string;
+  label: string;
+  value: string;
+  kind: 'onboarding' | 'message';
+  stage?: OnboardingStage | null;
+}
+
+export interface MessageChoice {
+  promptId: string;
+  choiceId: string;
+}
+
+export interface WorkspaceResponse {
+  profile: PersonaProfile;
+  session: SessionDetail;
+}
+
+export interface ConnectionRequest {
+  toolkit: string;
+  label: string;
+  authorization_url?: string | null;
 }
 
 export interface ConversationTurn {
+  id?: string | null;
   role: 'assistant' | 'user' | string;
   content: string;
+  source?: string | null;
+  created_at?: string | null;
+  reply_to?: string | null;
+  prompt_id?: string | null;
+  choice_id?: string | null;
+  reveal_on_first_visit?: boolean;
+  choices?: ConversationChoice[];
+  connections?: ConnectionCardData[];
 }
 
 export interface SessionSummary {
@@ -27,6 +74,7 @@ export interface SessionSummary {
 export interface SessionDetail extends SessionSummary {
   conversation_history: ConversationTurn[];
   current_task?: string | null;
+  onboarding_stage?: OnboardingStage | null;
 }
 
 export interface MemoryApiResponse {
@@ -42,7 +90,49 @@ export interface GreetingResponse {
   greeting: string;
 }
 
+export interface PersonaProfile {
+  name: string;
+  assistant_name: string;
+  fields: Record<string, PersonaField>;
+  onboarding_complete: boolean;
+  onboarding_step: number;
+  updated_at?: string | null;
+}
+
+export interface PersonaField {
+  value: string | string[] | null;
+  status: 'unknown' | 'inferred' | 'confirmed' | string;
+  source: string | null;
+  confidence: number;
+  updated_at: string | null;
+}
+
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+async function readResponse<T>(res: Response, fallback: string): Promise<T> {
+  if (!res.ok) {
+    const error = await res.json().catch(() => null);
+    const detail = typeof error?.detail === 'string' ? error.detail : `${fallback} (${res.status})`;
+    throw new ApiError(detail, res.status);
+  }
+  return res.json();
+}
+
 export const api = {
+  async startChat(): Promise<WorkspaceResponse> {
+    const res = await fetch(`${API_BASE_URL}/chat/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null }),
+    });
+    return readResponse(res, 'Could not open your conversation');
+  },
+
   async getGreeting(): Promise<GreetingResponse> {
     const res = await fetch(`${API_BASE_URL}/greeting`);
 
@@ -125,7 +215,7 @@ export const api = {
     }
   },
 
-  async sendMessage(message: string, sessionId?: string): Promise<ChatApiResponse> {
+  async sendMessage(message: string, sessionId: string, requestId: string, choice?: MessageChoice): Promise<ChatApiResponse> {
     const res = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: {
@@ -133,15 +223,14 @@ export const api = {
       },
       body: JSON.stringify({
         message,
-        session_id: sessionId || null,
+        session_id: sessionId,
+        request_id: requestId,
+        prompt_id: choice?.promptId,
+        choice_id: choice?.choiceId,
       }),
     });
 
-    if (!res.ok) {
-      throw new Error(`API Error ${res.status}: ${res.statusText}`);
-    }
-
-    return res.json();
+    return readResponse(res, 'Could not send your message');
   },
 
   async getMemories(): Promise<MemoryApiResponse> {
@@ -172,6 +261,29 @@ export const api = {
     }
 
     return res.json();
+  },
+
+  async getIntegrationStatus(toolkit: Toolkit): Promise<{ toolkit: Toolkit; connected: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/integrations/${toolkit}/status`);
+    return readResponse(res, 'Could not check this connection');
+  },
+
+  async completeConnection(sessionId: string, toolkit: Toolkit): Promise<WorkspaceResponse> {
+    const res = await fetch(`${API_BASE_URL}/chat/connections/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, toolkit }),
+    });
+    return readResponse(res, 'Could not confirm this connection');
+  },
+
+  async connectIntegration(toolkit: Toolkit): Promise<{ connected: boolean; authorization_url?: string | null }> {
+    const res = await fetch(`${API_BASE_URL}/integrations/connect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toolkit }),
+    });
+    return readResponse(res, 'Could not start this connection');
   },
 
   async closeSession(sessionId: string): Promise<{ status: string; summary?: string }> {

@@ -101,6 +101,18 @@ def init_db(conninfo: str | None = None) -> None:
                     updated_at TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS persona_profiles (
+                    user_id VARCHAR(128) PRIMARY KEY,
+                    profile JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    onboarding_complete BOOLEAN NOT NULL DEFAULT FALSE,
+                    onboarding_step SMALLINT NOT NULL DEFAULT 0,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+
+                ALTER TABLE persona_profiles
+                    ADD COLUMN IF NOT EXISTS onboarding_step SMALLINT NOT NULL DEFAULT 0;
+
                 CREATE TABLE IF NOT EXISTS event_snapshots (
                     id VARCHAR(64) PRIMARY KEY,
                     user_id VARCHAR(128) NOT NULL,

@@ -27,10 +27,14 @@ data/
 
 # Personal memory is ignored by default.
 harvie/memory/persona.json
-# The packaged harvie/memory/persona.json is intentionally tracked.
 memory/
 !harvie/memory/
-!harvie/memory/persona.json.example
 
 # macOS
 .DS_Store
+
+# Local Codex agent state and installed skill copies
+.agents/
+__agent__/
+skills-lock.json
+design/Harvie_V2.md

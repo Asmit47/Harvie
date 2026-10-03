@@ -15,7 +15,7 @@ export default async function HarvieAppPage() {
         <span>Connected as {userId}</span>
         <UserButton />
       </div>
-      <HarvieDashboard />
+      <HarvieDashboard key={userId} userId={userId} />
     </div>
   );
 }
