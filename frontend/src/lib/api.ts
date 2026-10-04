@@ -1,4 +1,5 @@
 import { FloatingCardItem, Integration, MemoryEntry } from '../types/harvie';
+export type { MemoryEntry };
 
 // Requests stay same-origin so Clerk identity is attached by the server-side proxy.
 const API_BASE_URL = '/api/harvie';
