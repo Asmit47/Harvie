@@ -1,6 +1,7 @@
 'use client';
 
 import { Brain, Cable, ChevronLeft, MessageSquarePlus, PanelLeftClose, Settings2 } from 'lucide-react';
+import { UserButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 
 interface HarvieSidebarProps {
@@ -49,9 +50,14 @@ export function HarvieSidebar({
         </nav>
       </div>
 
-      <div className="sidebar-presence">
-        <span aria-hidden="true" />
-        {open && <small>Connected</small>}
+      <div className="sidebar-footer">
+        <div className="sidebar-account" aria-label="Account">
+          <UserButton />
+        </div>
+        <div className="sidebar-presence">
+          <span aria-hidden="true" />
+          {open && <small>Connected</small>}
+        </div>
       </div>
     </aside>
   );

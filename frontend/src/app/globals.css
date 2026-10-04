@@ -194,11 +194,9 @@ button {
 .alcor-feel-section { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 7rem; }.alcor-contrast-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }.alcor-before, .alcor-after { min-height: 24rem; padding: 24px; border-radius: 18px; }.alcor-before { background: #18181b; color: #71717a; }.alcor-after { color: #e4e4e7; background: linear-gradient(145deg, rgba(163, 230, 53, 0.16), rgba(24, 24, 27, 0.95) 48%); border: 1px solid rgba(163, 230, 53, 0.18); }.alcor-before p, .alcor-after p { margin: 0 0 26px; font-family: var(--font-sora), sans-serif; font-size: 0.95rem; color: #fff; }.alcor-before span, .alcor-after span { display: flex; align-items: center; gap: 8px; padding: 9px 0; font-size: 0.88rem; }.alcor-before span + span, .alcor-after span + span { border-top: 1px solid rgba(255, 255, 255, 0.06); }.alcor-after svg { color: #bef264; }
 
 .alcor-app-shell { min-height: 100dvh; }
-.alcor-app-account { position: fixed; z-index: 60; top: 22px; right: 24px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 999px; padding: 5px 6px 5px 13px; color: #a1a1aa; background: rgba(24, 24, 27, 0.76); backdrop-filter: blur(16px); font-size: 0.72rem; }
-.alcor-app-account button { border-radius: 50%; }
 
-@media (max-width: 820px) { .alcor-problem-section, .alcor-memory-section, .alcor-feel-section { grid-template-columns: 1fr; gap: 44px; }.alcor-section { padding: 5rem 0; }.alcor-fragment-map { min-height: 25rem; }.alcor-attention-card { align-items: flex-start; flex-direction: column; }.alcor-app-account span { display: none; } }
-@media (max-width: 540px) { .alcor-nav { width: min(100% - 32px, 1280px); }.alcor-section { width: min(100% - 32px, 1280px); }.alcor-nav-cta { padding: 0 12px; }.alcor-fragment { font-size: 0.72rem; }.alcor-fragment-gmail { left: 3%; }.alcor-fragment-calendar { right: 2%; }.alcor-fragment-docs { left: 1%; }.alcor-fragment-payments { right: 1%; }.alcor-fragment-tasks { left: 13%; }.alcor-contrast-grid { grid-template-columns: 1fr; }.alcor-before, .alcor-after { min-height: auto; }.alcor-app-account { top: 18px; right: 18px; } }
+@media (max-width: 820px) { .alcor-problem-section, .alcor-memory-section, .alcor-feel-section { grid-template-columns: 1fr; gap: 44px; }.alcor-section { padding: 5rem 0; }.alcor-fragment-map { min-height: 25rem; }.alcor-attention-card { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 540px) { .alcor-nav { width: min(100% - 32px, 1280px); }.alcor-section { width: min(100% - 32px, 1280px); }.alcor-nav-cta { padding: 0 12px; }.alcor-fragment { font-size: 0.72rem; }.alcor-fragment-gmail { left: 3%; }.alcor-fragment-calendar { right: 2%; }.alcor-fragment-docs { left: 1%; }.alcor-fragment-payments { right: 1%; }.alcor-fragment-tasks { left: 13%; }.alcor-contrast-grid { grid-template-columns: 1fr; }.alcor-before, .alcor-after { min-height: auto; } }
 @media (prefers-reduced-motion: reduce) { .alcor-orb, .alcor-button { transition: none; }.alcor-landing::before { display: none; } }
 
 button:focus-visible,
@@ -512,6 +510,23 @@ input:focus-visible {
   gap: 8px;
   padding: 6px 4px;
   color: #a1a1aa;
+}
+
+.sidebar-footer {
+  display: grid;
+  gap: 12px;
+}
+
+.sidebar-account {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+}
+
+.harvie-sidebar-open .sidebar-account {
+  justify-content: flex-start;
+  padding-left: 2px;
 }
 
 .sidebar-presence span,
@@ -830,6 +845,33 @@ input:focus-visible {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+.nucleus-shell {
+  --nucleus-top-inset: 16px;
+  display: block;
+  z-index: 45;
+  overflow: visible;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.nucleus-shell:focus,
+.nucleus-shell:focus-visible {
+  outline: none;
+}
+
+.nucleus-shell[data-dragging="true"] {
+  cursor: grabbing;
+}
+
+.nucleus-shell[data-phase="idle"] {
+  cursor: default;
 }
 
 .nucleus-wrap {
@@ -1173,6 +1215,10 @@ input:focus-visible {
 }
 
 @media (max-width: 767px) {
+  .nucleus-shell {
+    --nucleus-top-inset: 76px;
+  }
+
   .harvie-workspace {
     min-height: 100dvh;
     overflow-x: hidden;
