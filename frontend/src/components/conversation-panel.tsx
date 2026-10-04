@@ -103,14 +103,18 @@ export function ConversationPanel({
   }, [revealedCount, displayMessages, revealWelcome]);
 
   const visibleMessages = displayMessages.slice(0, revealedCount);
+  const lastVisibleMessage = visibleMessages[visibleMessages.length - 1];
   /** True while an assistant message is queued but not yet shown. */
   const isRevealing =
     revealedCount < displayMessages.length &&
     displayMessages[revealedCount]?.role === 'assistant';
 
   useEffect(() => {
+    // Keep the opening welcome in view while its messages reveal one by one.
+    // Normal chat turns still follow the newest message.
+    if (revealWelcome && (isRevealing || lastVisibleMessage?.reveal_on_first_visit)) return;
     messagesEndRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
-  }, [visibleMessages.length, isThinking, isRevealing, reduceMotion]);
+  }, [visibleMessages.length, isThinking, isRevealing, lastVisibleMessage?.reveal_on_first_visit, reduceMotion, revealWelcome]);
 
   return (
     <section className="conversation-panel" aria-label="Conversation">
@@ -172,7 +176,7 @@ export function ConversationPanel({
             </div>
           </motion.article>
         )}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="conversation-end" />
       </div>
       {history[history.length - 1]?.source === 'llm' && session?.onboarding_stage === 'name' && (
         <p className="conversation-status">You can return to the welcome anytime—tell me what to call you here.</p>

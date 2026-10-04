@@ -8,6 +8,12 @@ from harvie.core.turns import assistant_turn, now_iso
 WELCOME_SESSION_ID = "welcome"
 STAGE_STEPS = {"name": 0, "connections": 1, "complete": 2}
 
+
+def normalize_onboarding_stage(stage: str | None) -> str | None:
+    """Map the old welcome-step name onto the current public stage."""
+    return "name" if stage == "assistant_name" else stage
+
+
 _NON_NAMES = {
     "hi", "hey", "hello", "yo", "yes", "no", "ok", "okay", "sure", "thanks", "thank",
     "skip", "later", "continue", "done", "next", "help", "what", "who", "why", "how",

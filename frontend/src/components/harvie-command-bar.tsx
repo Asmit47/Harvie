@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 
@@ -13,7 +13,16 @@ interface HarvieCommandBarProps {
 
 export function HarvieCommandBar({ sending, onSend, boot = false, placeholder = 'What are we working on?' }: HarvieCommandBarProps) {
   const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const setAgentStatus = useWorkspaceStore((state) => state.setAgentStatus);
+
+  useLayoutEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 160 ? 'auto' : 'hidden';
+  }, [input]);
 
   const submit = (message = input) => {
     const command = message.trim();
@@ -32,10 +41,18 @@ export function HarvieCommandBar({ sending, onSend, boot = false, placeholder = 
         }}
       >
         <label className="sr-only" htmlFor="harvie-command">Talk to Harvie</label>
-        <input
+        <textarea
+          ref={inputRef}
           id="harvie-command"
+          rows={1}
           value={input}
           onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              submit();
+            }
+          }}
           onFocus={() => setAgentStatus('listening')}
           onBlur={() => !sending && setAgentStatus('idle')}
           placeholder={placeholder}
@@ -46,7 +63,7 @@ export function HarvieCommandBar({ sending, onSend, boot = false, placeholder = 
         />
         <div className="command-tools">
           <button type="submit" className="command-submit" aria-label="Send command" disabled={!input.trim() || sending}>
-            <ArrowUp size={17} strokeWidth={2} />
+            <ArrowUp size={19} strokeWidth={2} />
           </button>
         </div>
       </form>

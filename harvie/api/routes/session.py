@@ -2,10 +2,11 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from harvie.core.config import settings
 from harvie.core.graph import compiled_graph
+from harvie.core.onboarding import normalize_onboarding_stage
 from harvie.entrypoints.cli import close_session
 from harvie.memory.tier2_session import checkpointer, generate_session_id, get_thread_config
 from harvie.integrations.catalog import Toolkit
@@ -19,6 +20,11 @@ class ConversationChoice(BaseModel):
     value: str
     kind: Literal["onboarding", "message"] = "message"
     stage: Literal["name", "connections", "complete"] | None = None
+
+    @field_validator("stage", mode="before")
+    @classmethod
+    def normalize_legacy_stage(cls, value: str | None) -> str | None:
+        return normalize_onboarding_stage(value)
 
 
 class ConnectionCard(BaseModel):

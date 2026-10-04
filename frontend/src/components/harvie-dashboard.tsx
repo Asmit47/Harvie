@@ -6,6 +6,7 @@ import { ConversationPanel } from '@/components/conversation-panel';
 import { HarvieCommandBar } from '@/components/harvie-command-bar';
 import { NucleusShell } from './nucleus-shell';
 import { HarvieSidebar } from '@/components/harvie-sidebar';
+import { FollowupsPanel } from '@/components/followups-panel';
 import { api, ApiError, type MessageChoice, type SessionDetail, type WorkspaceResponse } from '@/lib/api';
 import { ConnectionsPanel } from '@/components/connections-panel';
 import { useWorkspaceStore } from '@/stores/workspace-store';
@@ -14,11 +15,10 @@ export function HarvieDashboard({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const [conversationNotice, setConversationNotice] = useState<string | null>(null);
   const [showConnections, setShowConnections] = useState(false);
+  const [showFollowups, setShowFollowups] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [failedSend, setFailedSend] = useState<{ message: string; sessionId: string; requestId: string; choice?: MessageChoice } | null>(null);
   const sendingRef = useRef(false);
-  const sidebarOpen = useWorkspaceStore((state) => state.sidebarOpen);
-  const setSidebarOpen = useWorkspaceStore((state) => state.setSidebarOpen);
   const setAgentStatus = useWorkspaceStore((state) => state.setAgentStatus);
 
   const workspaceQuery = useQuery({
@@ -44,6 +44,21 @@ export function HarvieDashboard({ userId }: { userId: string }) {
     queryClient.setQueryData(['workspace', userId], workspace);
     queryClient.setQueryData(['session', userId, workspace.session.id], workspace.session);
   }, [queryClient, userId]);
+
+  const createNewChat = useCallback(async () => {
+    const profile = queryClient.getQueryData<WorkspaceResponse>(['workspace', userId])?.profile;
+    if (!profile) {
+      setConversationNotice('Your workspace is still loading. Try again in a moment.');
+      return;
+    }
+    try {
+      const nextSession = await api.createSession();
+      acceptWorkspace({ profile, session: nextSession });
+      void queryClient.invalidateQueries({ queryKey: ['sessions', userId] });
+    } catch {
+      setConversationNotice('Could not start a new conversation. Try again.');
+    }
+  }, [acceptWorkspace, queryClient, userId]);
 
   const sendMessageMutation = useMutation({
     mutationFn: ({ message, sessionId, requestId, choice }: { message: string; sessionId: string; requestId: string; choice?: MessageChoice }) => api.sendMessage(message, sessionId, requestId, choice),
@@ -103,11 +118,12 @@ export function HarvieDashboard({ userId }: { userId: string }) {
   return (
     <main className="harvie-workspace">
       <HarvieSidebar
-        open={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        onNewChat={() => { void createNewChat(); }}
         onConnectionsClick={() => setShowConnections(true)}
+        onFollowupsClick={() => setShowFollowups(true)}
       />
       {showConnections && <ConnectionsPanel userId={userId} onClose={() => setShowConnections(false)} />}
+      {showFollowups && <FollowupsPanel userId={userId} onClose={() => setShowFollowups(false)} />}
       <ConversationPanel
         userId={userId}
         session={session}

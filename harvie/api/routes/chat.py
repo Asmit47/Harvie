@@ -11,7 +11,7 @@ from langchain_core.messages import SystemMessage
 from harvie.api.routes.profile import ProfileResponse, profile_response
 from harvie.api.routes.session import SessionDetail, create_session, get_session, list_sessions
 from harvie.core.graph import compiled_graph
-from harvie.core.onboarding import WELCOME_SESSION_ID, completion_update, initial_state, plan_reply
+from harvie.core.onboarding import WELCOME_SESSION_ID, completion_update, initial_state, normalize_onboarding_stage, plan_reply
 from harvie.core.turns import assistant_turn, user_turn
 from harvie.integrations.catalog import CONNECTORS, Toolkit, connection_card
 from harvie.integrations.composio.session import IntegrationError, session_manager
@@ -301,7 +301,7 @@ def _selected_choice(state: dict, request: ChatRequest) -> dict | None:
     choice = next((item for item in (prompt or {}).get("choices", []) if item["id"] == request.choice_id), None)
     if not choice or choice["value"] != request.message:
         raise HTTPException(status_code=422, detail="This conversation choice is invalid.")
-    if choice["kind"] == "onboarding" and choice.get("stage") != state.get("onboarding_stage"):
+    if choice["kind"] == "onboarding" and normalize_onboarding_stage(choice.get("stage")) != state.get("onboarding_stage"):
         raise HTTPException(status_code=409, detail="That welcome step is already finished. Continue with the latest message.")
     return choice
 

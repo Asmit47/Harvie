@@ -81,6 +81,16 @@ export interface MemoryApiResponse {
   memories: MemoryEntry[];
 }
 
+export interface OpenLoop {
+  id: string;
+  title: string;
+  details?: string | null;
+  type: string;
+  priority: 'low' | 'medium' | 'high';
+  status: string;
+  due_at?: string | null;
+}
+
 export interface IntegrationsApiResponse {
   integrations: Integration[];
 }
@@ -246,6 +256,16 @@ export const api = {
     }
 
     return res.json();
+  },
+
+  async getOpenLoops(): Promise<{ open_loops: OpenLoop[] }> {
+    const res = await fetch(`${API_BASE_URL}/open-loops`);
+    return readResponse(res, 'Could not load follow-ups');
+  },
+
+  async completeOpenLoop(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/open-loops/${encodeURIComponent(id)}/complete`, { method: 'POST' });
+    if (!res.ok) throw new ApiError('Could not complete this follow-up', res.status);
   },
 
   async getIntegrations(): Promise<IntegrationsApiResponse> {
