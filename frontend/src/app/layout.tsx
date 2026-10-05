@@ -22,8 +22,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Harvie | Personal AI Workspace',
-  description: 'A calm, proactive workspace for your personal AI assistant.',
+  title: 'Harvie | Your AI assistant. Your machine. Your data.',
+  description: 'Harvie is a personal AI agent that remembers what matters and helps get things done across the tools you use every day.',
 };
 
 export default function RootLayout({
