@@ -71,6 +71,7 @@ const fragmentShader = `
 `;
 
 const RENDER_SIZE = 320;
+const MAX_BUFFER = 2048;
 const STATE_VALUE = { idle: 0, listening: 1, thinking: 2, acting: 3 } as const;
 
 export type OrbState = keyof typeof STATE_VALUE;
@@ -95,9 +96,13 @@ export function Nucleus({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Size the buffer once from the laid-out canvas. The plasma math is unchanged.
+    // A fixed 320px buffer is what made the landing orb soft once the stage grew.
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = RENDER_SIZE * dpr;
-    canvas.height = RENDER_SIZE * dpr;
+    const css = Math.max(canvas.clientWidth, canvas.clientHeight, RENDER_SIZE);
+    const bufferSize = Math.min(MAX_BUFFER, Math.round(css * dpr));
+    canvas.width = bufferSize;
+    canvas.height = bufferSize;
 
     const gl = canvas.getContext('webgl', {
       alpha: true,

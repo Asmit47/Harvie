@@ -50,7 +50,6 @@ export function MeetHarvie() {
   return (
     <div>
       <figure className="relative">
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F59E5B]/10 blur-3xl" aria-hidden="true" />
         <div className="overflow-hidden rounded-[14px] border border-[#24272E] bg-[#0A0B0D] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div className="flex items-center justify-between border-b border-[#24272E] px-4 py-3">
             <span className="font-mono text-[11px] text-[#6C7079]">harvie / workspace</span>
@@ -73,7 +72,7 @@ export function MeetHarvie() {
               })}
             </aside>
             <div
-              className="relative flex min-h-[420px] flex-col items-center justify-center px-4 py-10"
+              className="relative flex flex-col items-center justify-center px-4 py-6 sm:py-8"
               onPointerMove={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
                 pointerRef.current = {
@@ -82,12 +81,16 @@ export function MeetHarvie() {
                 };
               }}
             >
-              <p className="mb-2 text-center text-sm text-[#EDEDEF]">{STATUS[state]}</p>
-              <div className="size-[280px] sm:size-[420px]">
-                <Nucleus state={state} pointerRef={pointerRef} />
+              <p className="mb-1 text-center text-sm text-[#EDEDEF]">{STATUS[state]}</p>
+              {/* The shader keeps a transparent margin around the blob. Cropping
+                  that margin, instead of scaling a bitmap, makes the same orb
+                  fill the stage without going soft. */}
+              <div className="relative mx-auto size-[280px] overflow-hidden sm:size-[440px]">
+                <div className="absolute left-1/2 top-1/2 h-[260%] w-[260%] -translate-x-1/2 -translate-y-1/2">
+                  <Nucleus state={state} pointerRef={pointerRef} />
+                </div>
               </div>
-              <div className="pointer-events-none absolute bottom-16 h-6 w-40 rounded-full bg-[#F59E5B]/25 blur-xl" aria-hidden="true" />
-              <div className="mt-8 flex h-12 w-full max-w-md items-center rounded-full border border-[#24272E] bg-[#171A1F] px-4 text-sm text-[#6C7079]" aria-hidden="true">
+              <div className="mt-4 flex h-12 w-full max-w-md items-center rounded-full border border-[#24272E] bg-[#171A1F] px-4 text-sm text-[#6C7079]" aria-hidden="true">
                 Tell Harvie what you need
               </div>
             </div>

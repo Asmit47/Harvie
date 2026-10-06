@@ -23,7 +23,6 @@ import { GetStarted, SignInLink } from '@/components/landing/auth-cta';
 import { MeetHarvie } from '@/components/landing/meet-harvie';
 
 const GITHUB = 'https://github.com/Asmit47/Harvie';
-const EASE = [0.22, 1, 0.36, 1] as const;
 
 const NAV = [
   { href: '#product', label: 'Product' },
@@ -89,17 +88,10 @@ const LAYERS = [
 ];
 
 function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
-  const reduce = useReducedMotion();
   return (
-    <motion.div
-      className={className}
-      initial={reduce ? false : { opacity: 0, y: 12 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: reduce ? 0 : 0.5, delay, ease: EASE }}
-    >
+    <div className={`landing-rise ${className}`} style={delay ? { animationDelay: `${delay}s` } : undefined}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -132,24 +124,11 @@ function Rail({ active = 'Today' }: { active?: string }) {
 }
 
 function ActivityLog() {
-  const reduce = useReducedMotion();
-  const [count, setCount] = useState(reduce ? ACTIVITY.length : 0);
-
-  useEffect(() => {
-    if (reduce) {
-      setCount(ACTIVITY.length);
-      return;
-    }
-    if (count >= ACTIVITY.length) return;
-    const id = window.setTimeout(() => setCount((value) => value + 1), count === 0 ? 700 : 400);
-    return () => window.clearTimeout(id);
-  }, [count, reduce]);
-
   return (
     <div className="border-t border-[#24272E] p-4 xl:border-t-0 xl:border-l" aria-hidden="true">
       <p className="font-mono text-[11px] text-[#6C7079]">Recent activity</p>
       <ul className="mt-3 space-y-3">
-        {ACTIVITY.slice(0, count).map(([verb, detail]) => (
+        {ACTIVITY.map(([verb, detail]) => (
           <li key={verb} className="font-mono text-[12px] leading-5 text-[#A1A4AB]">
             <span className="text-[#F59E5B]">{verb}</span>
             <span className="mt-0.5 block text-[#EDEDEF]">{detail}</span>
@@ -161,7 +140,6 @@ function ActivityLog() {
 }
 
 function HeroToday() {
-  const reduce = useReducedMotion();
   return (
     <SampleWindow>
       <div className="flex items-center justify-between border-b border-[#24272E] px-4 py-3">
@@ -181,12 +159,10 @@ function HeroToday() {
           <div className="grid xl:grid-cols-[minmax(0,1fr)_230px]">
             <div className="space-y-3 px-4 py-4" aria-hidden="true">
               {ATTENTION.map((card, index) => (
-                <motion.article
+                <article
                   key={card.title}
-                  className="rounded-xl border border-[#24272E] bg-[#171A1F] p-4"
-                  initial={reduce ? false : { opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: reduce ? 0 : 0.45 + index * 0.15, ease: EASE }}
+                  className="landing-rise rounded-xl border border-[#24272E] bg-[#171A1F] p-4"
+                  style={{ animationDelay: `${0.12 + index * 0.08}s` }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-[15px] font-medium text-[#EDEDEF]">{card.title}</h3>
@@ -198,7 +174,7 @@ function HeroToday() {
                     <span className="rounded-full bg-[#F59E5B] px-3 py-1.5 text-[12px] font-semibold text-[#1A0E05]">{card.primary}</span>
                     <span className="rounded-full border border-[#31353D] px-3 py-1.5 text-[12px] text-[#A1A4AB]">{card.secondary}</span>
                   </div>
-                </motion.article>
+                </article>
               ))}
             </div>
             <ActivityLog />
@@ -245,7 +221,6 @@ function MemoryLayers() {
 export function LandingPage() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const reduce = useReducedMotion();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -311,15 +286,9 @@ export function LandingPage() {
             <p className="inline-flex rounded-full border border-[#24272E] bg-[#111317] px-3 py-1 font-mono text-[12px] text-[#A1A4AB]">
               Source on GitHub · Your data stays yours
             </p>
-            <motion.h1
-              id="hero-title"
-              className="mt-6 font-sans text-[clamp(2.5rem,6.4vw,4.25rem)] font-semibold leading-[1.02] tracking-[-0.03em]"
-              initial={reduce ? false : { opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: EASE }}
-            >
+            <h1 id="hero-title" className="landing-rise mt-6 font-sans text-[clamp(2.5rem,6.4vw,4.25rem)] font-semibold leading-[1.02] tracking-[-0.03em]">
               The AI assistant that <em className="font-serif font-normal italic">follows through.</em>
-            </motion.h1>
+            </h1>
             <p className="mx-auto mt-5 max-w-[46rem] text-[17px] leading-[1.6] text-[#A1A4AB]">
               Harvie remembers your work, acts in Gmail and Calendar with your OK, and keeps track of every open loop until it&apos;s done.
             </p>
@@ -331,14 +300,9 @@ export function LandingPage() {
             </div>
             <p className="mt-4 text-sm text-[#6C7079]">Live at harvie.me. Built with Next.js, LangGraph and FastAPI.</p>
           </div>
-          <motion.div
-            className="mx-auto mt-14 max-w-[1080px]"
-            initial={reduce ? false : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: reduce ? 0 : 0.15, ease: EASE }}
-          >
+          <div className="landing-rise mx-auto mt-14 max-w-[1080px]" style={{ animationDelay: '0.08s' }}>
             <HeroToday />
-          </motion.div>
+          </div>
         </section>
 
         <section id="problem" className="scroll-mt-20 mx-auto grid max-w-[1200px] items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-32">
@@ -513,14 +477,7 @@ export function LandingPage() {
                 <div className="relative mt-5 flex gap-2">
                   <span className="relative rounded-full bg-[#F59E5B] px-4 py-2 text-sm font-semibold text-[#1A0E05]">
                     Send
-                    <motion.span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute -inset-1 rounded-full ring-1 ring-[#F59E5B]"
-                      initial={reduce ? false : { opacity: 0, scale: 0.96 }}
-                      whileInView={{ opacity: [0, 1, 0], scale: [0.96, 1.06, 1.1] }}
-                      viewport={{ once: true, amount: 0.6 }}
-                      transition={{ duration: 0.8, delay: 0.2, ease: EASE }}
-                    />
+                    <span aria-hidden="true" className="send-ring pointer-events-none absolute -inset-1 rounded-full ring-1 ring-[#F59E5B]" />
                   </span>
                   <span className="rounded-full border border-[#31353D] px-4 py-2 text-sm text-[#A1A4AB]">Edit</span>
                   <span className="rounded-full border border-[#31353D] px-4 py-2 text-sm text-[#A1A4AB]">Cancel</span>

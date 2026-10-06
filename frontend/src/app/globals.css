@@ -1385,6 +1385,31 @@ input:focus-visible {
   50% { transform: translateX(-50%) scale(1.15); }
 }
 
+@keyframes landing-rise {
+  from { transform: translateY(12px); }
+  to { transform: none; }
+}
+
+@keyframes send-ring {
+  0% { opacity: 0; transform: scale(0.96); }
+  40% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-rise {
+    animation: landing-rise 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .send-ring {
+    animation: send-ring 800ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+  }
+}
+
+.send-ring {
+  opacity: 0;
+}
+
 .loop-step[data-static="true"] .loop-hot {
   opacity: 1;
 }

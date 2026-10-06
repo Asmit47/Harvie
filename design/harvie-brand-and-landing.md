@@ -128,12 +128,12 @@ Built by, in `built-by.tsx` only: "Built by Asmit Kaushal, an AI builder in Indi
 
 ## Motion
 
-- **Framer Motion** owns UI reveals and hovers. Opacity and translate Y only. 500ms, ease `[0.22, 1, 0.36, 1]`, once, at 20% in view. Stagger children by 60ms. Do not reveal long paragraphs.
-- **Hero.** The window rises once. The three cards follow, 150ms apart. Activity lines appear once, 400ms apart, then stop.
+- **Reveals.** A CSS translate, 500ms, ease `[0.22, 1, 0.36, 1]`. Opacity stays 1. Sections are visible with no JavaScript, with `prefers-reduced-motion`, and if IntersectionObserver or GSAP never runs. Framer Motion still owns the memory-layer hover.
+- **Hero.** The window and the three cards are in the first paint. Activity lines are present immediately. The rise is transform only.
 - **GSAP** owns the follow-through loop and nothing else. One step lit at a time, 1.4s, by fading an ember overlay (opacity, not a color tween). ScrollTrigger pauses the timeline when the section is off screen. No scrub, no pin.
 - **Memory layers.** Hover or focus lifts the active plate 6px and drops the others to 50% opacity. Framer owns both.
 - **Send ring.** One opacity and scale pulse when the confirmation card enters. It does not loop.
-- **Orb.** The hand-tuned Nucleus shader is the orb, on the landing page and in the dashboard. The plasma math stays. Ember replaces lime. Idle keeps the original slow drift. Listening adds a small pointer ripple. Thinking speeds the same field and tints it toward iris. Acting brightens the ember and adds one pulse ring. State blends in the draw loop, so the WebGL context is not rebuilt. The canvas pauses when it is off screen. Phones use the same shader. There is no second orb.
+- **Orb.** The hand-tuned Nucleus shader is the orb, on the landing page and in the dashboard. The plasma math stays. Ember replaces lime. Idle keeps the original slow drift. Listening adds a small pointer ripple. Thinking speeds the same field and tints it toward iris. Acting brightens the ember and adds one pulse ring. State blends in the draw loop, so the WebGL context is not rebuilt. The canvas pauses when it is off screen. Phones use the same shader. There is no second orb. On the landing page the transparent margin around the blob is cropped so the same orb fills the Meet Harvie stage, and the drawing buffer matches that size once so it stays sharp.
 - **Phones and reduced motion.** Phones use the same Nucleus shader. When `prefers-reduced-motion: reduce` is set, the shader draws one still frame at the selected state and the loop shows the Act step lit. No entrance motion.
 
 One owner per animated property. Do not animate layout, color, or filter on the same node from two libraries.
