@@ -1,5 +1,7 @@
 # Harvie — Web Design Direction
 
+> Superseded by [harvie-brand-and-landing.md](./harvie-brand-and-landing.md). That document is the source of truth for palette, type, the wordmark, and the landing page. This file is kept as the earlier graphite-and-lime direction.
+
 ## Design read
 
 Harvie is a work assistant for people who need important context, commitments, and follow-ups to survive across tools and time. The marketing site should feel calm, capable, and unusually clear: Linear's disciplined hierarchy, Attio's product-led storytelling, and Resend's developer-friendly specificity, interpreted through Harvie's own graphite-and-lime identity. This is a reference-informed direction, not a reproduction of any reference site.

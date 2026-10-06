@@ -1,29 +1,44 @@
 import type { Metadata } from 'next';
-import { JetBrains_Mono, Manrope, Sora } from 'next/font/google';
+import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { Providers } from './providers';
 import './globals.css';
 
-const sora = Sora({
+const geist = Geist({
   subsets: ['latin'],
-  variable: '--font-sora',
+  variable: '--font-geist',
   display: 'swap',
 });
 
-const manrope = Manrope({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
-  variable: '--font-manrope',
+  variable: '--font-geist-mono',
   display: 'swap',
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
+  weight: '400',
+  style: 'italic',
+  variable: '--font-instrument-serif',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Harvie | Your AI assistant. Your machine. Your data.',
-  description: 'Harvie is a personal AI agent that remembers what matters and helps get things done across the tools you use every day.',
+  metadataBase: new URL('https://harvie.me'),
+  title: 'Harvie · The AI assistant that follows through',
+  description: 'Harvie remembers your work, acts in Gmail and Calendar with your OK, and keeps track of every open loop until it is done.',
+  openGraph: {
+    title: 'Harvie · The AI assistant that follows through',
+    description: 'Harvie remembers your work, acts in Gmail and Calendar with your OK, and keeps track of every open loop until it is done.',
+    url: 'https://harvie.me',
+    siteName: 'Harvie',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Harvie · The AI assistant that follows through',
+    description: 'Harvie remembers your work, acts in Gmail and Calendar with your OK, and keeps track of every open loop until it is done.',
+  },
 };
 
 export default function RootLayout({
@@ -32,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${sora.variable} ${manrope.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable} ${instrumentSerif.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>

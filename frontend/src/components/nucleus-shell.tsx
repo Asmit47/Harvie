@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Nucleus } from './nucleus';
+import { HarvieOrb } from '@/components/orb/harvie-orb';
 import { api } from '@/lib/api';
 
 export type NucleusPhase = 'idle' | 'active';
@@ -212,7 +212,7 @@ export function NucleusShell({ phase, onArrive }: NucleusShellProps) {
           height: glowSize,
         }}
       >
-        <Nucleus />
+        <HarvieOrb className="size-full" />
       </span>
       {phase === 'active' && (
         <span id="nucleus-drag-help" className="sr-only">

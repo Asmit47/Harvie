@@ -50,7 +50,7 @@ export function HarvieSidebar({ onNewChat, onConnectionsClick, onFollowupsClick 
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 flex w-[60px] flex-col items-center border-r border-white/[0.07] bg-[#101012] py-5 select-none max-md:inset-x-3 max-md:top-3 max-md:bottom-auto max-md:h-14 max-md:w-auto max-md:flex-row max-md:rounded-xl max-md:border max-md:bg-[#101012]/95 max-md:px-2 max-md:py-1" aria-label="Sidebar navigation">
+    <aside className="fixed inset-y-0 left-0 z-50 flex w-[60px] flex-col items-center border-r border-white/[0.07] bg-[#111317] py-5 select-none max-md:inset-x-3 max-md:top-3 max-md:bottom-auto max-md:h-14 max-md:w-auto max-md:flex-row max-md:rounded-xl max-md:border max-md:bg-[#111317]/95 max-md:px-2 max-md:py-1" aria-label="Sidebar navigation">
       <nav className="mt-[22vh] flex w-full flex-col items-center gap-5 pt-1 max-md:mt-0 max-md:w-auto max-md:flex-row max-md:gap-1 max-md:pt-0" aria-label="Main navigation">
         {NAV_ITEMS.map(({ label, icon: Icon, action }) => (
           <button
@@ -63,7 +63,7 @@ export function HarvieSidebar({ onNewChat, onConnectionsClick, onFollowupsClick 
             className={`group relative grid size-11 place-items-center rounded-[16px] border transition-[color,background,border-color,transform] duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/60 ${activeAction === action ? 'border-white/[0.04] bg-white/[0.09] text-zinc-100' : 'border-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200'}`}
           >
             <Icon size={21} strokeWidth={1.65} />
-            <span className="pointer-events-none absolute left-[52px] z-[60] translate-x-1 rounded-md border border-white/10 bg-[#1b1b1f] px-2.5 py-1.5 text-[11px] font-medium text-white opacity-0 shadow-xl transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">
+            <span className="pointer-events-none absolute left-[52px] z-[60] translate-x-1 rounded-md border border-white/10 bg-[#1E2128] px-2.5 py-1.5 text-[11px] font-medium text-white opacity-0 shadow-xl transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">
               {label}
             </span>
           </button>
@@ -80,7 +80,7 @@ export function HarvieSidebar({ onNewChat, onConnectionsClick, onFollowupsClick 
           className={`group grid size-10 place-items-center rounded-xl transition-colors active:scale-[0.96] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/60 ${settingsOpen ? 'bg-white/[0.08] text-white' : 'text-zinc-500 hover:bg-white/[0.07] hover:text-white'}`}
         >
           <Settings2 size={18} strokeWidth={1.7} />
-          {!settingsOpen && <span className="pointer-events-none absolute left-[52px] z-[60] translate-x-1 rounded-md border border-white/10 bg-[#1b1b1f] px-2.5 py-1.5 text-[11px] font-medium text-white opacity-0 shadow-xl transition duration-150 group-hover:translate-x-0 group-hover:opacity-100">Settings</span>}
+          {!settingsOpen && <span className="pointer-events-none absolute left-[52px] z-[60] translate-x-1 rounded-md border border-white/10 bg-[#1E2128] px-2.5 py-1.5 text-[11px] font-medium text-white opacity-0 shadow-xl transition duration-150 group-hover:translate-x-0 group-hover:opacity-100">Settings</span>}
         </button>
 
         <AnimatePresence>
@@ -91,7 +91,7 @@ export function HarvieSidebar({ onNewChat, onConnectionsClick, onFollowupsClick 
               animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
               exit={{ opacity: 0, x: -5, y: 5, scale: 0.98 }}
               transition={{ duration: 0.14 }}
-              className="absolute bottom-0 left-[52px] z-[70] w-[260px] overflow-hidden rounded-xl border border-white/10 bg-[#171719] p-2 text-white shadow-2xl shadow-black/50"
+              className="absolute bottom-0 left-[52px] z-[70] w-[260px] overflow-hidden rounded-xl border border-white/10 bg-[#171A1F] p-2 text-white shadow-2xl shadow-black/50"
             >
               <div className="flex items-center gap-3 rounded-lg px-2.5 py-2.5">
                 <div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-xs text-zinc-300">
@@ -144,7 +144,7 @@ function MemoryDialog({ open, onClose }: { open: boolean; onClose: () => void })
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <motion.section role="dialog" aria-modal="true" aria-labelledby="memory-title" className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#151517] shadow-2xl" initial={{ opacity: 0, y: 8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.98 }}>
+          <motion.section role="dialog" aria-modal="true" aria-labelledby="memory-title" className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#171A1F] shadow-2xl" initial={{ opacity: 0, y: 8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.98 }}>
             <header className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
               <div><p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">Personal context</p><h2 id="memory-title" className="mt-1 text-base font-medium text-white">Memory</h2></div>
               <button type="button" onClick={onClose} aria-label="Close memory" className="grid size-8 place-items-center rounded-lg text-zinc-500 hover:bg-white/[0.06] hover:text-white"><X size={16} /></button>

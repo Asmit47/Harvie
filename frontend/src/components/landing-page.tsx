@@ -1,606 +1,626 @@
 'use client';
 
 import Link from 'next/link';
-import { Show, SignInButton, SignUpButton } from '@clerk/nextjs';
+import { useEffect, useState, type ReactNode } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
-  ArrowRight,
-  ArrowUpRight,
+  Brain,
   CalendarDays,
-  Check,
-  CheckCircle2,
   CircleDot,
-  Clock3,
-  Command,
   FileText,
-  Globe2,
   Inbox,
-  Layers3,
-  LockKeyhole,
-  Mail,
   Menu,
-  Network,
-  Search,
-  Send,
-  ShieldCheck,
-  Sparkles,
-  StickyNote,
+  Settings2,
+  SunMedium,
+  Wallet,
+  Workflow,
   X,
 } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
-import { useState, type ReactNode } from 'react';
+import { HarvieLogo } from '@/components/harvie-logo';
+import { BuiltBy } from '@/components/landing/built-by';
+import { FollowLoop } from '@/components/landing/follow-loop';
+import { GetStarted, SignInLink } from '@/components/landing/auth-cta';
+import { MeetHarvie } from '@/components/landing/meet-harvie';
 
-const capabilities = [
+const GITHUB = 'https://github.com/Asmit47/Harvie';
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+const NAV = [
+  { href: '#product', label: 'Product' },
+  { href: '#how', label: 'How it works' },
+  { href: '#memory', label: 'Memory' },
+  { href: '#trust', label: 'Source' },
+];
+
+const ATTENTION = [
   {
-    title: 'Start your day with clarity.',
-    description: 'Bring your schedule, tasks, priorities, and unfinished work into one view.',
-    prompt: 'What does my day look like?',
-    icon: CalendarDays,
-    className: 'capability-card-wide capability-card-lime',
-    preview: 'day',
+    title: 'Harbor Creative',
+    meta: 'Invoice ₹40,000 unpaid for 12 days.',
+    chip: 'Gmail',
+    body: 'I drafted a follow-up based on your last email to Rhea.',
+    primary: 'Review & send',
+    secondary: 'Snooze',
   },
   {
-    title: 'Keep your work moving.',
-    description: 'Open loops stay visible, even when the original conversation is days behind you.',
-    prompt: 'What am I forgetting this week?',
-    icon: Clock3,
-    className: 'capability-card-tall capability-card-quiet',
-    preview: 'loops',
+    title: 'Kickoff with Rhea',
+    meta: 'Next Tuesday, 11:00.',
+    chip: 'Calendar',
+    body: 'No agenda yet. Want me to draft one from the proposal thread?',
+    primary: 'Draft agenda',
+    secondary: 'Skip',
   },
   {
-    title: 'Get things done for you.',
-    description: 'Research, draft, organize, and coordinate across the tools you already use.',
-    prompt: 'Help me prepare for tomorrow.',
-    icon: Send,
-    className: 'capability-card-tall capability-card-warm',
-    preview: 'actions',
-  },
-  {
-    title: 'Remember what matters.',
-    description: 'Keep useful context and preferences close, so every session can continue where you left off.',
-    prompt: 'Continue from where we left off.',
-    icon: Network,
-    className: 'capability-card-wide capability-card-deep',
-    preview: 'memory',
+    title: 'Waiting on Northline',
+    meta: 'Signed contract, sent 4 days ago.',
+    chip: 'Open loop',
+    body: "No reply yet. I'll recheck Friday morning.",
+    primary: 'Recheck now',
+    secondary: 'Close loop',
   },
 ];
 
-const useCases = [
-  { title: 'Plan your day', prompt: 'What should I focus on today?', icon: CalendarDays },
-  { title: 'Manage your inbox', prompt: 'Find the emails I need to respond to.', icon: Inbox },
-  { title: 'Prepare for meetings', prompt: 'Prepare me for my 2 PM meeting.', icon: FileText },
-  { title: 'Stay on top of tasks', prompt: "What am I forgetting this week?", icon: CheckCircle2 },
-  { title: 'Research', prompt: 'Research these companies and summarize what matters.', icon: Search },
-  { title: 'Follow up', prompt: "Who haven't I followed up with this week?", icon: Send },
-  { title: 'Personal organization', prompt: 'I have a lot going on. Help me organize it.', icon: Layers3 },
+const ACTIVITY = [
+  ['observed', 'new email from Rhea'],
+  ['remembered', 'prefers email over calls'],
+  ['drafted', 'follow-up · waiting for your OK'],
 ];
 
-const toolConnections = [
-  { name: 'Gmail', icon: Mail },
-  { name: 'Google Calendar', icon: CalendarDays },
-  { name: 'Work tools', icon: Layers3 },
-  { name: 'Your data', icon: FileText },
-  { name: 'APIs & services', icon: Globe2 },
+const RAIL = [
+  { label: 'Today', icon: SunMedium },
+  { label: 'Open loops', icon: CircleDot },
+  { label: 'Memory', icon: Brain },
+  { label: 'Connections', icon: Workflow },
+  { label: 'Settings', icon: Settings2 },
+];
+
+const SCATTERED = [
+  { icon: Inbox, label: 'Gmail', position: 'left-4 top-6' },
+  { icon: CalendarDays, label: 'Calendar', position: 'right-4 top-8' },
+  { icon: FileText, label: 'Docs', position: 'left-2 top-44' },
+  { icon: Wallet, label: 'Payments', position: 'right-3 top-48' },
+  { icon: CircleDot, label: 'Tasks', position: 'left-1/2 bottom-6 -translate-x-1/2' },
+];
+
+const LAYERS = [
+  ['Persona', 'who you are and how you like to work'],
+  ['Session', "what you're doing right now (checkpointed)"],
+  ['Operational', 'open loops, tasks and their state'],
+  ['Long-term', 'facts that matter months later (Supermemory)'],
 ];
 
 function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
-  const reduceMotion = useReducedMotion();
-
+  const reduce = useReducedMotion();
   return (
     <motion.div
       className={className}
-      initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+      initial={reduce ? false : { opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.16 }}
-      transition={{ duration: 0.65, delay, ease: [0.16, 1, 0.3, 1] }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: reduce ? 0 : 0.5, delay, ease: EASE }}
     >
       {children}
     </motion.div>
   );
 }
 
-function GetStartedButton({ compact = false }: { compact?: boolean }) {
-  const className = compact
-    ? 'landing-button landing-button-primary landing-button-small'
-    : 'landing-button landing-button-primary';
-
+function SampleWindow({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <>
-      <Show when="signed-out">
-        <SignUpButton forceRedirectUrl="/app">
-          <button type="button" className={className}>
-            Get started <ArrowUpRight aria-hidden="true" size={16} strokeWidth={1.8} />
-          </button>
-        </SignUpButton>
-      </Show>
-      <Show when="signed-in">
-        <Link href="/app" className={className}>
-          Open Harvie <ArrowUpRight aria-hidden="true" size={16} strokeWidth={1.8} />
-        </Link>
-      </Show>
-    </>
+    <figure className={`relative ${className}`}>
+      <div className="pointer-events-none absolute inset-x-10 -top-8 -z-10 h-40 rounded-full bg-[#F59E5B]/[0.08] blur-3xl" aria-hidden="true" />
+      <div className="overflow-hidden rounded-[14px] border border-[#24272E] bg-[#111317] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        {children}
+      </div>
+    </figure>
   );
 }
 
-function HeroScene() {
+function Rail({ active = 'Today' }: { active?: string }) {
   return (
-    <div
-      className="hero-scene"
-      role="img"
-      aria-label="A Harvie workspace bringing email, calendar, notes, and tasks into one daily brief"
-    >
-      <div className="hero-scene-grid" />
-      <div className="hero-scene-glow" />
-      <div className="hero-scene-window">
-        <div className="scene-window-bar">
-          <div className="scene-window-brand">
-            <span className="scene-brand-dot" />
-            <span>harvie / workspace</span>
-          </div>
-          <div className="scene-window-status">
-            <span className="scene-status-dot" />
-            Private workspace
-          </div>
-        </div>
-        <div className="scene-window-body">
-          <aside className="scene-sidebar" aria-hidden="true">
-            <span className="scene-sidebar-active"><Command size={13} /> Today</span>
-            <span><Inbox size={13} /> Inbox</span>
-            <span><CheckCircle2 size={13} /> Open loops</span>
-            <span><StickyNote size={13} /> Memory</span>
-          </aside>
-          <div className="scene-main">
-            <div className="scene-main-heading">
-              <div>
-                <span className="scene-kicker">Tuesday, 14 May</span>
-                <strong>Your day, in context.</strong>
-              </div>
-              <span className="scene-avatar">H</span>
-            </div>
-            <div className="scene-summary">
-              <div className="scene-summary-icon"><Sparkles size={17} /></div>
-              <div>
-                <strong>Three things need your attention</strong>
-                <span>One meeting, two follow-ups, and a decision from yesterday.</span>
-              </div>
-            </div>
-            <div className="scene-timeline">
-              <div className="scene-timeline-row">
-                <span className="scene-time">09:30</span>
-                <span className="scene-timeline-line" />
-                <span><b>Product review</b><small>Calendar · prepared with open decisions</small></span>
-              </div>
-              <div className="scene-timeline-row scene-timeline-row-highlight">
-                <span className="scene-time">11:45</span>
-                <span className="scene-timeline-line" />
-                <span><b>Follow-up ready</b><small>Email · draft waiting for your review</small></span>
-              </div>
-              <div className="scene-timeline-row">
-                <span className="scene-time">16:00</span>
-                <span className="scene-timeline-line" />
-                <span><b>Unfinished work</b><small>Task · carry forward or close the loop</small></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="scene-float scene-float-mail">
-        <Mail size={14} />
-        <span>New context</span>
-        <b>2 emails</b>
-      </div>
-      <div className="scene-float scene-float-calendar">
-        <CalendarDays size={14} />
-        <span>Next up</span>
-        <b>Design review</b>
-      </div>
-      <div className="scene-float scene-float-memory">
-        <StickyNote size={14} />
-        <span>Remembered</span>
-        <b>Prefers concise updates</b>
-      </div>
-      <div className="scene-path scene-path-one" />
-      <div className="scene-path scene-path-two" />
+    <aside className="hidden w-[176px] shrink-0 flex-col gap-1 border-r border-[#24272E] p-3 md:flex" aria-hidden="true">
+      {RAIL.map((item) => {
+        const Icon = item.icon;
+        const on = item.label === active;
+        return (
+          <span key={item.label} className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] ${on ? 'bg-[#1E2128] text-[#EDEDEF]' : 'text-[#6C7079]'}`}>
+            <Icon size={15} strokeWidth={1.7} />
+            {item.label}
+          </span>
+        );
+      })}
+    </aside>
+  );
+}
+
+function ActivityLog() {
+  const reduce = useReducedMotion();
+  const [count, setCount] = useState(reduce ? ACTIVITY.length : 0);
+
+  useEffect(() => {
+    if (reduce) {
+      setCount(ACTIVITY.length);
+      return;
+    }
+    if (count >= ACTIVITY.length) return;
+    const id = window.setTimeout(() => setCount((value) => value + 1), count === 0 ? 700 : 400);
+    return () => window.clearTimeout(id);
+  }, [count, reduce]);
+
+  return (
+    <div className="border-t border-[#24272E] p-4 xl:border-t-0 xl:border-l" aria-hidden="true">
+      <p className="font-mono text-[11px] text-[#6C7079]">Recent activity</p>
+      <ul className="mt-3 space-y-3">
+        {ACTIVITY.slice(0, count).map(([verb, detail]) => (
+          <li key={verb} className="font-mono text-[12px] leading-5 text-[#A1A4AB]">
+            <span className="text-[#F59E5B]">{verb}</span>
+            <span className="mt-0.5 block text-[#EDEDEF]">{detail}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
-function CapabilityPreview({ type }: { type: string }) {
-  if (type === 'day') {
-    return (
-      <div className="capability-preview capability-preview-day" aria-hidden="true">
-        <div className="preview-day-head"><span>Today</span><span>3 priorities</span></div>
-        <div className="preview-day-row preview-day-row-active"><span className="preview-check" />Prepare for the product review<span>09:30</span></div>
-        <div className="preview-day-row"><span className="preview-check" />Reply to the open thread<span>11:45</span></div>
-        <div className="preview-day-row"><span className="preview-check" />Decide what moves to tomorrow<span>16:00</span></div>
+function HeroToday() {
+  const reduce = useReducedMotion();
+  return (
+    <SampleWindow>
+      <div className="flex items-center justify-between border-b border-[#24272E] px-4 py-3">
+        <span className="font-mono text-[11px] text-[#6C7079]">harvie / today</span>
+        <span className="font-mono text-[11px] text-[#6C7079]">Sample workspace</span>
       </div>
-    );
-  }
+      <div className="flex">
+        <Rail />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-end justify-between gap-4 px-5 pb-2 pt-5">
+            <div>
+              <p className="font-sans text-2xl font-semibold tracking-[-0.03em] text-[#EDEDEF]">Today</p>
+              <p className="mt-1 text-sm text-[#A1A4AB]">Tue 6 Oct</p>
+            </div>
+            <p className="font-mono text-[12px] text-[#F59E5B]">3 open loops need you</p>
+          </div>
+          <div className="grid xl:grid-cols-[minmax(0,1fr)_230px]">
+            <div className="space-y-3 px-4 py-4" aria-hidden="true">
+              {ATTENTION.map((card, index) => (
+                <motion.article
+                  key={card.title}
+                  className="rounded-xl border border-[#24272E] bg-[#171A1F] p-4"
+                  initial={reduce ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: reduce ? 0 : 0.45 + index * 0.15, ease: EASE }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-[15px] font-medium text-[#EDEDEF]">{card.title}</h3>
+                    <span className="rounded-full bg-[rgba(245,158,91,0.12)] px-2 py-0.5 font-mono text-[11px] text-[#F59E5B]">{card.chip}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-[#A1A4AB]">{card.meta}</p>
+                  <p className="mt-2 text-sm leading-6 text-[#EDEDEF]">{card.body}</p>
+                  <div className="mt-3 flex gap-2">
+                    <span className="rounded-full bg-[#F59E5B] px-3 py-1.5 text-[12px] font-semibold text-[#1A0E05]">{card.primary}</span>
+                    <span className="rounded-full border border-[#31353D] px-3 py-1.5 text-[12px] text-[#A1A4AB]">{card.secondary}</span>
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+            <ActivityLog />
+          </div>
+        </div>
+      </div>
+      <figcaption className="sr-only">
+        Sample workspace. A Today view with three open loops: an unpaid Harbor Creative invoice, a kickoff with Rhea, and a contract waiting on Northline.
+      </figcaption>
+    </SampleWindow>
+  );
+}
 
-  if (type === 'loops') {
-    return (
-      <div className="capability-preview capability-preview-loops" aria-hidden="true">
-        <div className="preview-loop-row"><span className="preview-loop-dot preview-loop-dot-lime" /><span>Reply to Maya</span><small>Yesterday</small></div>
-        <div className="preview-loop-row"><span className="preview-loop-dot" /><span>Confirm the next check-in</span><small>2 days</small></div>
-        <div className="preview-loop-row"><span className="preview-loop-dot preview-loop-dot-warm" /><span>Review the open decision</span><small>Friday</small></div>
-      </div>
-    );
-  }
-
-  if (type === 'actions') {
-    return (
-      <div className="capability-preview capability-preview-actions" aria-hidden="true">
-        <div className="preview-action-heading"><span className="preview-action-icon"><Send size={13} /></span><span>Objective in progress</span><span className="preview-action-status">3 / 4</span></div>
-        <div className="preview-action-line"><Check size={13} /> Gather the latest context</div>
-        <div className="preview-action-line"><Check size={13} /> Draft the follow-up</div>
-        <div className="preview-action-line"><CircleDot size={13} /> Review before sending</div>
-      </div>
-    );
-  }
+function MemoryLayers() {
+  const reduce = useReducedMotion();
+  const [active, setActive] = useState<number | null>(null);
 
   return (
-    <div className="capability-preview capability-preview-memory" aria-hidden="true">
-      <span>project / Harbor</span>
-      <div className="preview-memory-graph">
-        <span className="preview-memory-node preview-memory-node-main">Context</span>
-        <span className="preview-memory-node preview-memory-node-one">Preference</span>
-        <span className="preview-memory-node preview-memory-node-two">Decision</span>
-        <span className="preview-memory-node preview-memory-node-three">Next step</span>
-        <i className="preview-memory-link preview-memory-link-one" />
-        <i className="preview-memory-link preview-memory-link-two" />
-        <i className="preview-memory-link preview-memory-link-three" />
-      </div>
+    <div className="grid gap-3" onMouseLeave={() => setActive(null)}>
+      {LAYERS.map(([name, detail], index) => {
+        const on = active === index;
+        const dim = active !== null && !on;
+        return (
+          <motion.button
+            key={name}
+            type="button"
+            onMouseEnter={() => setActive(index)}
+            onFocus={() => setActive(index)}
+            onBlur={() => setActive(null)}
+            animate={reduce ? undefined : { y: on ? -6 : 0, opacity: dim ? 0.5 : 1 }}
+            transition={{ duration: 0.2 }}
+            className="rounded-2xl border border-[#24272E] bg-[#171A1F]/90 px-4 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#F59E5B]"
+            style={{ marginLeft: index * 12 }}
+          >
+            <span className="block text-sm font-medium text-[#EDEDEF]">{name}</span>
+            <span className="mt-1 block text-sm text-[#A1A4AB]">{detail}</span>
+          </motion.button>
+        );
+      })}
     </div>
   );
 }
 
 export function LandingPage() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const reduce = useReducedMotion();
 
-  function closeMenu() {
-    setMenuOpen(false);
-  }
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
-    <main className="harvie-landing">
-      <div className="landing-noise" aria-hidden="true" />
-      <nav className="landing-nav" aria-label="Primary navigation">
-        <div className="landing-container landing-nav-inner">
-          <Link href="/" className="landing-brand" onClick={closeMenu}>
-            <span className="landing-brand-mark" aria-hidden="true"><span /></span>
-            <span>harvie</span>
+    <div className="min-h-screen bg-[#0A0B0D] text-[#EDEDEF]">
+      <header className={`sticky top-0 z-40 transition-colors ${scrolled ? 'border-b border-[#24272E] bg-[#111317]/80 backdrop-blur-md' : 'bg-transparent'}`}>
+        <nav className="mx-auto flex h-14 max-w-[1200px] items-center gap-6 px-6" aria-label="Primary">
+          <Link href="/" className="group shrink-0" aria-label="harvie, home">
+            <HarvieLogo />
           </Link>
-
-          <div className="landing-nav-links">
-            <a href="#what-is-harvie">Product</a>
-            <a href="#how-it-works">How it works</a>
-            <a href="#privacy">Privacy</a>
+          <div className="hidden items-center gap-6 md:flex">
+            {NAV.map((item) => (
+              <a key={item.href} href={item.href} className="text-sm text-[#A1A4AB] transition-colors hover:text-[#EDEDEF]">
+                {item.label}
+              </a>
+            ))}
           </div>
-
-          <div className="landing-nav-actions">
-            <Show when="signed-out">
-              <SignInButton forceRedirectUrl="/app">
-                <button type="button" className="landing-text-button">Sign in</button>
-              </SignInButton>
-            </Show>
-            <Show when="signed-in">
-              <Link href="/app" className="landing-text-button">Open app</Link>
-            </Show>
-            <GetStartedButton compact />
+          <div className="ml-auto hidden items-center gap-4 md:flex">
+            <a href={GITHUB} className="font-mono text-[12.5px] text-[#6C7079] transition-colors hover:text-[#EDEDEF]" rel="noreferrer" target="_blank">
+              GitHub
+            </a>
+            <SignInLink />
+            <GetStarted compact />
           </div>
-
           <button
             type="button"
-            className="landing-menu-toggle"
-            aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
+            className="ml-auto grid size-9 place-items-center rounded-lg border border-[#24272E] text-[#EDEDEF] md:hidden"
+            aria-expanded={open}
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            onClick={() => setOpen((value) => !value)}
           >
-            {menuOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
+            {open ? <X size={18} /> : <Menu size={18} />}
           </button>
-        </div>
-        <div className={`landing-mobile-menu ${menuOpen ? 'landing-mobile-menu-open' : ''}`}>
-          <a href="#what-is-harvie" onClick={closeMenu}>Product <ArrowUpRight aria-hidden="true" size={16} /></a>
-          <a href="#how-it-works" onClick={closeMenu}>How it works <ArrowUpRight aria-hidden="true" size={16} /></a>
-          <a href="#privacy" onClick={closeMenu}>Privacy <ArrowUpRight aria-hidden="true" size={16} /></a>
-          <div className="landing-mobile-actions">
-            <Show when="signed-out">
-              <SignInButton forceRedirectUrl="/app">
-                <button type="button" className="landing-text-button">Sign in</button>
-              </SignInButton>
-            </Show>
-            <GetStartedButton />
-          </div>
-        </div>
-      </nav>
-
-      <section className="landing-hero" aria-labelledby="hero-title">
-        <div className="landing-container landing-hero-grid">
-          <Reveal className="landing-hero-copy">
-            <p className="landing-eyebrow"><span className="landing-eyebrow-dot" /> Personal AI agent for everyday work</p>
-            <h1 id="hero-title">
-              <span>Your AI assistant.</span>
-              <span>Your machine.</span>
-              <span>Your data.</span>
-            </h1>
-            <p className="landing-hero-description">Harvie works alongside you to plan, remember, organize, and take action across the tools you use every day.</p>
-            <div className="landing-hero-actions">
-              <GetStartedButton />
-              <a href="#how-it-works" className="landing-button landing-button-secondary">See how it works <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} /></a>
-            </div>
-          </Reveal>
-          <Reveal className="landing-hero-visual" delay={0.1}>
-            <HeroScene />
-          </Reveal>
-        </div>
-        <div className="landing-container landing-hero-bottom">
-          <span>Private by design.</span>
-          <span>Built to work with you.</span>
-          <span>Made for follow-through.</span>
-        </div>
-      </section>
-
-      <section className="landing-proof-line" aria-label="Harvie principles">
-        <div className="landing-container landing-proof-grid">
-          <div><span>01</span><strong>Context that carries forward</strong></div>
-          <div><span>02</span><strong>Actions you can review</strong></div>
-          <div><span>03</span><strong>Control over your data</strong></div>
-        </div>
-      </section>
-
-      <section id="what-is-harvie" className="landing-section landing-intro-section">
-        <div className="landing-container landing-intro-layout">
-          <Reveal className="landing-intro-copy">
-            <h2>An AI assistant that actually works alongside you.</h2>
-            <p>Most AI assistants wait for a question. Harvie understands your context, remembers what matters, works with the tools you already use, and helps move things forward.</p>
-            <p>Think of it as an assistant that is always available, without needing to explain everything again.</p>
-          </Reveal>
-          <Reveal className="landing-context-panel" delay={0.08}>
-            <div className="context-panel-top"><span className="context-panel-label">Harvie’s working context</span><span className="context-panel-state"><span /> Ready</span></div>
-            <div className="context-panel-list">
-              <div><span className="context-panel-icon"><Network size={16} /></span><span><strong>Understands the work around your request</strong><small>Not just the last message.</small></span><CheckCircle2 aria-hidden="true" size={17} /></div>
-              <div><span className="context-panel-icon"><StickyNote size={16} /></span><span><strong>Remembers useful context and preferences</strong><small>So you can continue where you left off.</small></span><CheckCircle2 aria-hidden="true" size={17} /></div>
-              <div><span className="context-panel-icon"><Send size={16} /></span><span><strong>Turns objectives into next steps</strong><small>With review points when they matter.</small></span><CheckCircle2 aria-hidden="true" size={17} /></div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="landing-section landing-manifesto-section">
-        <div className="landing-container landing-manifesto-layout">
-          <Reveal className="landing-manifesto-copy">
-            <h2>More than a chatbot.</h2>
-            <p>Harvie isn&apos;t designed around endless conversations. It&apos;s designed around getting things done.</p>
-          </Reveal>
-          <Reveal className="landing-manifesto-steps" delay={0.08}>
-            <div><span>01</span><strong>You tell Harvie what matters.</strong></div>
-            <div><span>02</span><strong>Harvie understands the context.</strong></div>
-            <div><span>03</span><strong>It figures out what needs to happen.</strong></div>
-            <div className="landing-manifesto-step-active"><span>04</span><strong>Then it helps make it happen.</strong><ArrowRight aria-hidden="true" size={18} /></div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="capabilities" className="landing-section landing-capabilities-section">
-        <div className="landing-container">
-          <Reveal className="landing-section-intro">
-            <h2>Built for the work between the work.</h2>
-            <p>Harvie keeps the small commitments, decisions, and follow-ups moving so they don&apos;t disappear between tools and sessions.</p>
-          </Reveal>
-          <div className="capability-grid">
-            {capabilities.map((capability, index) => {
-              const Icon = capability.icon;
-              return (
-                <Reveal key={capability.title} className={`capability-card ${capability.className}`} delay={index * 0.05}>
-                  <div className="capability-card-heading">
-                    <span className="capability-icon"><Icon aria-hidden="true" size={17} strokeWidth={1.7} /></span>
-                    <span className="capability-card-index">0{index + 1}</span>
-                  </div>
-                  <div className="capability-card-copy">
-                    <h3>{capability.title}</h3>
-                    <p>{capability.description}</p>
-                    <span className="capability-prompt">{capability.prompt}</span>
-                  </div>
-                  <CapabilityPreview type={capability.preview} />
-                </Reveal>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section id="proactive" className="landing-section landing-delegation-section">
-        <div className="landing-container">
-          <Reveal className="landing-section-intro landing-section-intro-narrow">
-            <h2>Don&apos;t just ask. Delegate.</h2>
-            <p>The goal isn&apos;t to spend more time talking to AI. Give Harvie an objective, then spend less time managing the work around it.</p>
-          </Reveal>
-          <Reveal className="delegation-board" delay={0.08}>
-            <div className="delegation-column delegation-column-instructions">
-              <span className="delegation-label">Instead of</span>
-              <p>“Check my calendar, look at my emails, figure out what I need to prepare for tomorrow, and remind me about the meeting.”</p>
-              <div className="delegation-friction"><span /><span /><span /><span /></div>
-            </div>
-            <div className="delegation-arrow" aria-hidden="true"><ArrowRight size={20} /></div>
-            <div className="delegation-column delegation-column-objective">
-              <span className="delegation-label">Tell Harvie</span>
-              <p>“Help me prepare for tomorrow.”</p>
-              <div className="delegation-objective-status"><Sparkles size={15} /><span>Objective understood</span><Check size={15} /></div>
-            </div>
-            <div className="delegation-result">
-              <div className="delegation-result-heading"><span className="delegation-label">Harvie works through the context</span><span className="delegation-progress">Ready for review</span></div>
-              <div className="delegation-result-steps">
-                <span><Check size={14} /> Checks your calendar</span>
-                <span><Check size={14} /> Finds the related conversation</span>
-                <span><CircleDot size={14} /> Prepares a focused brief</span>
+        </nav>
+        {open && (
+          <div className="border-t border-[#24272E] bg-[#111317] px-6 py-4 md:hidden">
+            <div className="grid gap-3">
+              {NAV.map((item) => (
+                <a key={item.href} href={item.href} onClick={() => setOpen(false)} className="text-sm text-[#EDEDEF]">
+                  {item.label}
+                </a>
+              ))}
+              <a href={GITHUB} className="font-mono text-[12.5px] text-[#6C7079]" rel="noreferrer" target="_blank">
+                GitHub
+              </a>
+              <div className="mt-2 flex items-center justify-between">
+                <SignInLink />
+                <GetStarted compact />
               </div>
-              <button type="button" className="delegation-review-button">Review the plan <ArrowUpRight aria-hidden="true" size={15} /></button>
+            </div>
+          </div>
+        )}
+      </header>
+
+      <main>
+        <section className="px-6 pb-16 pt-16 md:pb-24 md:pt-24" aria-labelledby="hero-title">
+          <div className="mx-auto max-w-[760px] text-center">
+            <p className="inline-flex rounded-full border border-[#24272E] bg-[#111317] px-3 py-1 font-mono text-[12px] text-[#A1A4AB]">
+              Source on GitHub · Your data stays yours
+            </p>
+            <motion.h1
+              id="hero-title"
+              className="mt-6 font-sans text-[clamp(2.5rem,6.4vw,4.25rem)] font-semibold leading-[1.02] tracking-[-0.03em]"
+              initial={reduce ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: EASE }}
+            >
+              The AI assistant that <em className="font-serif font-normal italic">follows through.</em>
+            </motion.h1>
+            <p className="mx-auto mt-5 max-w-[46rem] text-[17px] leading-[1.6] text-[#A1A4AB]">
+              Harvie remembers your work, acts in Gmail and Calendar with your OK, and keeps track of every open loop until it&apos;s done.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <GetStarted />
+              <a href="#how" className="inline-flex h-11 items-center rounded-full border border-[#31353D] px-5 text-sm text-[#EDEDEF] transition-colors hover:border-[#F59E5B]/40">
+                See how it works
+              </a>
+            </div>
+            <p className="mt-4 text-sm text-[#6C7079]">Live at harvie.me. Built with Next.js, LangGraph and FastAPI.</p>
+          </div>
+          <motion.div
+            className="mx-auto mt-14 max-w-[1080px]"
+            initial={reduce ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: reduce ? 0 : 0.15, ease: EASE }}
+          >
+            <HeroToday />
+          </motion.div>
+        </section>
+
+        <section id="problem" className="scroll-mt-20 mx-auto grid max-w-[1200px] items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-32">
+          <Reveal>
+            <p className="font-mono text-[12.5px] text-[#6C7079]">01 · The problem</p>
+            <h2 className="mt-4 max-w-[14ch] text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[44px]">Work is everywhere. Context is nowhere.</h2>
+            <p className="mt-4 max-w-[46ch] text-[17px] leading-[1.6] text-[#A1A4AB]">
+              Your emails, meetings, docs and payments live in different tools. You are the only one holding it together, and things slip.
+            </p>
+          </Reveal>
+          <Reveal delay={0.06}>
+            <SampleWindow>
+              <div className="flex items-center justify-between border-b border-[#24272E] px-4 py-3">
+                <span className="font-mono text-[11px] text-[#6C7079]">scattered work</span>
+                <span className="font-mono text-[11px] text-[#6C7079]">Sample workspace</span>
+              </div>
+              <div className="relative min-h-0 p-4 md:min-h-[380px] md:p-6" aria-hidden="true">
+                <div className="mb-4 flex flex-wrap gap-2 md:hidden">
+                  {SCATTERED.map(({ icon: Icon, label }) => (
+                    <span key={label} className="inline-flex items-center gap-2 rounded-full border border-[#24272E] bg-[#171A1F] px-3 py-2 text-sm">
+                      <Icon size={14} className="text-[#A1A4AB]" />
+                      {label}
+                    </span>
+                  ))}
+                </div>
+                <svg className="absolute inset-8 hidden h-[calc(100%-4rem)] w-[calc(100%-4rem)] md:block" viewBox="0 0 400 280" fill="none">
+                  <path d="M40 40 C 140 40, 180 130, 200 150" stroke="#31353D" strokeDasharray="4 5" />
+                  <path d="M360 36 C 280 50, 240 120, 210 146" stroke="#31353D" strokeDasharray="4 5" />
+                  <path d="M24 200 C 90 180, 140 160, 190 156" stroke="#31353D" strokeDasharray="4 5" />
+                  <path d="M370 210 C 300 190, 250 170, 214 160" stroke="#31353D" strokeDasharray="4 5" />
+                  <path d="M200 250 C 200 210, 204 180, 204 168" stroke="#31353D" strokeDasharray="4 5" />
+                </svg>
+                {SCATTERED.map(({ icon: Icon, label, position }) => (
+                  <span key={label} className={`absolute hidden items-center gap-2 rounded-full border border-[#24272E] bg-[#171A1F] px-3 py-2 text-sm text-[#EDEDEF] md:inline-flex ${position}`}>
+                    <Icon size={14} className="text-[#A1A4AB]" />
+                    {label}
+                  </span>
+                ))}
+                <div className="relative mx-auto w-[min(100%,240px)] rounded-2xl border border-[#31353D] bg-[#1E2128] px-4 py-4 text-center md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
+                  <p className="text-sm font-medium text-[#EDEDEF]">Harbor Creative</p>
+                  <p className="mt-1 font-mono text-[12px] text-[#F59E5B]">3 things connected</p>
+                </div>
+              </div>
+            </SampleWindow>
+          </Reveal>
+        </section>
+
+        <section id="product" className="scroll-mt-20 mx-auto max-w-[1200px] px-6 py-20 md:py-32">
+          <Reveal>
+            <p className="font-mono text-[12.5px] text-[#6C7079]">02 · What Harvie is</p>
+            <h2 className="mt-4 max-w-[16ch] text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[44px]">Not a chat box. An assistant that keeps going.</h2>
+            <p className="mt-4 max-w-[52ch] text-[17px] leading-[1.6] text-[#A1A4AB]">
+              You give Harvie the outcome. It remembers the context, does the work in your tools, and comes back when something changes.
+            </p>
+          </Reveal>
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            {[
+              ['Remembers', 'People, preferences and decisions stay connected across every conversation.'],
+              ['Acts', 'Drafts emails and handles your calendar through Gmail and Calendar, with your OK first.'],
+              ['Follows through', 'Tracks open loops and rechecks them, so nothing waits on your memory.'],
+            ].map(([title, copy], index) => (
+              <Reveal key={title} delay={index * 0.06} className="rounded-2xl border border-[#24272E] bg-[#111317] p-6">
+                <h3 className="text-xl font-semibold tracking-[-0.03em]">{title}</h3>
+                <p className="mt-3 text-[15px] leading-6 text-[#A1A4AB]">{copy}</p>
+              </Reveal>
+            ))}
+          </div>
+          <p className="mx-auto mt-16 max-w-[36rem] text-center font-serif text-[clamp(1.7rem,3vw,2.5rem)] italic leading-[1.25] text-[#EDEDEF]">
+            Give Harvie the outcome. Keep your attention for the work that matters.
+          </p>
+        </section>
+
+        <section id="memory" className="scroll-mt-20 mx-auto grid max-w-[1200px] items-center gap-14 px-6 py-20 md:grid-cols-2 md:py-32">
+          <Reveal>
+            <p className="font-mono text-[12.5px] text-[#6C7079]">03 · Memory</p>
+            <h2 className="mt-4 max-w-[14ch] text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[44px]">Harvie remembers the relationship, not just the chat.</h2>
+            <p className="mt-4 max-w-[48ch] text-[17px] leading-[1.6] text-[#A1A4AB]">
+              Every next step starts with context, not a blank page. Memory is layered, so Harvie knows who you are, what you&apos;re doing now, and what happened before.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {['Persona', 'Session checkpointer', 'Operational memory', 'Supermemory'].map((chip) => (
+                <span key={chip} className="rounded-full border border-[#24272E] px-3 py-1 font-mono text-[12px] text-[#A1A4AB]">{chip}</span>
+              ))}
             </div>
           </Reveal>
-        </div>
-      </section>
+          <Reveal delay={0.06}>
+            <SampleWindow>
+              <div className="flex items-center justify-between border-b border-[#24272E] px-4 py-3">
+                <span className="font-mono text-[11px] text-[#6C7079]">memory</span>
+                <span className="font-mono text-[11px] text-[#6C7079]">Sample workspace</span>
+              </div>
+              <div className="grid gap-4 p-4 lg:grid-cols-2">
+                <div className="rounded-xl border border-[#24272E] bg-[#171A1F] p-4" aria-hidden="true">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-medium">Harbor Creative</h3>
+                    <span className="font-mono text-[11px] text-[#4CC38A]">Active</span>
+                  </div>
+                  <dl className="mt-4 space-y-2 text-sm">
+                    {[
+                      ['Person', 'Rhea, decision maker'],
+                      ['Preference', 'Prefers email'],
+                      ['Decision', 'Proposal accepted'],
+                      ['Invoice', '₹40,000'],
+                      ['Last contact', '3 days ago'],
+                      ['Next', 'Kickoff next week'],
+                    ].map(([term, value]) => (
+                      <div key={term} className="flex justify-between gap-3 border-t border-[#24272E] pt-2">
+                        <dt className="text-[#6C7079]">{term}</dt>
+                        <dd className="text-right text-[#EDEDEF]">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+                <MemoryLayers />
+              </div>
+            </SampleWindow>
+          </Reveal>
+        </section>
 
-      <section id="memory" className="landing-section landing-memory-section">
-        <div className="landing-container landing-memory-layout">
-          <Reveal className="memory-record" delay={0.05}>
-            <div className="memory-record-top"><span><StickyNote size={15} /> Example memory</span><span className="memory-record-menu">•••</span></div>
-            <h3>Keep the relationship in view.</h3>
-            <p className="memory-record-subtitle">Useful context stays connected across conversations.</p>
-            <div className="memory-record-items">
-              <div><span>Working preference</span><strong>Concise updates with a clear next step</strong></div>
-              <div><span>Open commitment</span><strong>Follow up after the proposal review</strong></div>
-              <div><span>Previous context</span><strong>The decision is waiting on one detail</strong></div>
-              <div><span>Next check-in</span><strong>Bring the unresolved question forward</strong></div>
+        <section id="how" className="scroll-mt-20 mx-auto max-w-[1200px] px-6 py-20 md:py-32">
+          <div className="grid items-start gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+            <Reveal>
+              <p className="font-mono text-[12.5px] text-[#6C7079]">04 · Follow through</p>
+              <h2 className="mt-4 max-w-[14ch] text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[44px]">Harvie doesn&apos;t wait to be asked.</h2>
+              <p className="mt-4 max-w-[42ch] text-[17px] leading-[1.6] text-[#A1A4AB]">
+                It watches for change, checks the state of every open loop, and brings the right moment back to you.
+              </p>
+              <article className="mt-8 rounded-2xl border border-[#24272E] bg-[#171A1F] p-5" aria-hidden="true">
+                <p className="font-mono text-[11px] text-[#6C7079]">Sample workspace</p>
+                <h3 className="mt-3 text-lg font-medium leading-snug">Harbor Creative&apos;s ₹40,000 invoice is still unpaid.</h3>
+                <p className="mt-2 text-sm leading-6 text-[#A1A4AB]">I drafted a follow-up based on your previous emails.</p>
+                <div className="mt-4 flex gap-2">
+                  <span className="rounded-full bg-[#F59E5B] px-3 py-1.5 text-[12px] font-semibold text-[#1A0E05]">Review & send</span>
+                  <span className="rounded-full border border-[#31353D] px-3 py-1.5 text-[12px] text-[#A1A4AB]">Remind me Friday</span>
+                </div>
+              </article>
+            </Reveal>
+            <Reveal delay={0.06}>
+              <FollowLoop />
+            </Reveal>
+          </div>
+        </section>
+
+        <section id="actions" className="scroll-mt-20 mx-auto grid max-w-[1200px] items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-32">
+          <Reveal className="md:order-2">
+            <p className="font-mono text-[12.5px] text-[#6C7079]">05 · Actions</p>
+            <h2 className="mt-4 max-w-[14ch] text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[44px]">It does the work. You stay in control.</h2>
+            <p className="mt-4 max-w-[46ch] text-[17px] leading-[1.6] text-[#A1A4AB]">
+              Harvie can send email and manage your calendar. Before anything goes out, it shows you exactly what it will do and waits for your OK.
+            </p>
+            <p className="mt-4 text-sm text-[#6C7079]">Connections are scoped to your account. Harvie only sees what you connect.</p>
+          </Reveal>
+          <Reveal delay={0.06} className="md:order-1">
+            <div className="relative">
+              <div className="absolute inset-x-6 top-4 rounded-2xl border border-[#24272E] bg-[#171A1F] px-4 py-3" aria-hidden="true">
+                <p className="font-mono text-[12px] text-[#6C7079]">calendar.create_event</p>
+                <p className="mt-1 text-sm text-[#A1A4AB]">Kickoff with Rhea · Tue 11:00</p>
+              </div>
+              <article className="relative mt-16 rounded-2xl border border-[#31353D] bg-[#111317] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <div className="flex items-center justify-between">
+                  <p className="font-mono text-[13px] text-[#EDEDEF]">gmail.send</p>
+                  <p className="font-mono text-[12px] text-[#E9C46A]">Needs your OK</p>
+                </div>
+                <p className="mt-1 font-mono text-[11px] text-[#6C7079]">Sample workspace</p>
+                <dl className="mt-4 space-y-2 text-sm">
+                  <div className="flex gap-3"><dt className="w-16 text-[#6C7079]">To</dt><dd>rhea@harborcreative.example</dd></div>
+                  <div className="flex gap-3"><dt className="w-16 text-[#6C7079]">Subject</dt><dd>Invoice for the brand project</dd></div>
+                </dl>
+                <p className="mt-4 text-sm leading-6 text-[#A1A4AB]">
+                  Rhea, the Harbor Creative invoice for ₹40,000 is still open. This is the follow-up from our last thread. Nothing sends until you confirm.
+                </p>
+                <div className="relative mt-5 flex gap-2">
+                  <span className="relative rounded-full bg-[#F59E5B] px-4 py-2 text-sm font-semibold text-[#1A0E05]">
+                    Send
+                    <motion.span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -inset-1 rounded-full ring-1 ring-[#F59E5B]"
+                      initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+                      whileInView={{ opacity: [0, 1, 0], scale: [0.96, 1.06, 1.1] }}
+                      viewport={{ once: true, amount: 0.6 }}
+                      transition={{ duration: 0.8, delay: 0.2, ease: EASE }}
+                    />
+                  </span>
+                  <span className="rounded-full border border-[#31353D] px-4 py-2 text-sm text-[#A1A4AB]">Edit</span>
+                  <span className="rounded-full border border-[#31353D] px-4 py-2 text-sm text-[#A1A4AB]">Cancel</span>
+                </div>
+              </article>
             </div>
-            <div className="memory-record-footer"><span className="memory-record-dot" /> Continues across sessions</div>
           </Reveal>
-          <Reveal className="landing-memory-copy">
-            <h2>It remembers the context you shouldn&apos;t have to repeat.</h2>
-            <p>Your work doesn&apos;t reset every morning. Neither should your assistant. Harvie can remember useful information about how you work, your ongoing tasks, important context, and previous interactions.</p>
-            <p className="landing-highlight-line">No starting from zero.</p>
-          </Reveal>
-        </div>
-      </section>
+        </section>
 
-      <section id="tools" className="landing-section landing-tools-section">
-        <div className="landing-container landing-tools-layout">
-          <Reveal className="landing-tools-copy">
-            <h2>One assistant. The tools you already use.</h2>
-            <p>Instead of jumping between tools, give Harvie the objective and let it coordinate the work across your everyday workflow.</p>
-            <div className="tool-connection-list">
-              {toolConnections.map((tool) => {
-                const Icon = tool.icon;
-                return <div key={tool.name}><span><Icon aria-hidden="true" size={16} /></span>{tool.name}<ArrowUpRight aria-hidden="true" size={14} /></div>;
-              })}
+        <section id="meet" className="scroll-mt-20 mx-auto max-w-[1200px] px-6 py-20 md:py-32">
+          <Reveal className="mx-auto max-w-[680px] text-center">
+            <p className="font-mono text-[12.5px] text-[#6C7079]">06 · Meet Harvie</p>
+            <h2 className="mt-4 text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[44px]">
+              Harvie is a <em className="font-serif font-normal italic">presence</em>, not a prompt.
+            </h2>
+            <p className="mt-4 text-[17px] leading-[1.6] text-[#A1A4AB]">
+              The orb is Harvie. It listens, thinks and acts, and you can see which one it&apos;s doing. Talk to it, or just let it work.
+            </p>
+          </Reveal>
+          <div className="mt-12">
+            <MeetHarvie />
+          </div>
+        </section>
+
+        <section id="trust" className="scroll-mt-20 mx-auto max-w-[1200px] px-6 py-20 md:py-32">
+          <Reveal>
+            <p className="font-mono text-[12.5px] text-[#6C7079]">07 · Trust</p>
+            <h2 className="mt-4 text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[44px]">Your work stays yours.</h2>
+          </Reveal>
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
+            {[
+              ['Source available', 'The code is public on GitHub. Read what Harvie does with your data.'],
+              ['Asks before acting', 'Nothing is sent or booked without your OK.'],
+              ['Scoped access', 'Gmail and Calendar connections are scoped to your account only.'],
+              ['Local-first records', 'Persona, session, and open loops live in your Postgres. You can run the API yourself. Model calls use the providers you configure.'],
+            ].map(([title, copy], index) => (
+              <Reveal key={title} delay={index * 0.05} className="rounded-2xl border border-[#24272E] bg-[#111317] p-6">
+                <h3 className="text-lg font-medium">{title}</h3>
+                <p className="mt-2 text-[15px] leading-6 text-[#A1A4AB]">{copy}</p>
+              </Reveal>
+            ))}
+          </div>
+          <p className="mt-6 text-sm text-[#6C7079]">
+            Secure sign-in with Clerk.{' '}
+            <a className="text-[#A1A4AB] underline decoration-[#31353D] underline-offset-4 hover:text-[#EDEDEF]" href={GITHUB} rel="noreferrer" target="_blank">
+              Read the source
+            </a>
+          </p>
+        </section>
+
+        <section id="stack" className="scroll-mt-20 mx-auto max-w-[1200px] px-6 py-20 md:py-32">
+          <Reveal>
+            <p className="font-mono text-[12.5px] text-[#6C7079]">08 · Under the hood</p>
+            <h2 className="mt-4 max-w-[16ch] text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[44px]">Built on tools you can trust and inspect.</h2>
+            <p className="mt-4 max-w-[48ch] text-[17px] leading-[1.6] text-[#A1A4AB]">
+              A LangGraph agent with a FastAPI backend, Postgres for open loops, and a Next.js 15 app.
+            </p>
+          </Reveal>
+          <ul className="mt-8 flex flex-wrap gap-2">
+            {['next.js 15', 'fastapi', 'langgraph', 'postgres', 'supermemory', 'composio', 'mcp', 'clerk'].map((item) => (
+              <li key={item} className="rounded-full border border-[#24272E] bg-[#111317] px-3 py-1.5 font-mono text-[12.5px] text-[#A1A4AB]">{item}</li>
+            ))}
+          </ul>
+          <p className="mt-8 font-mono text-[12.5px] leading-6 text-[#6C7079]">
+            Orb and UI → LangGraph agent → memory layers + Gmail and Calendar (Composio) → open loops in Postgres → back to you
+          </p>
+        </section>
+
+        <BuiltBy />
+
+        <section id="start" className="relative scroll-mt-20 overflow-hidden px-6 py-24 text-center md:py-32">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F59E5B]/10 blur-3xl" aria-hidden="true" />
+          <div className="relative mx-auto max-w-[640px]">
+            <h2 className="text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[44px]">Hand off the follow-through.</h2>
+            <p className="mt-4 text-[17px] leading-[1.6] text-[#A1A4AB]">Connect Gmail and Calendar, tell Harvie what matters, and let it keep track.</p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <GetStarted />
+              <a href="#how" className="inline-flex h-11 items-center rounded-full border border-[#31353D] px-5 text-sm text-[#EDEDEF]">See how it works</a>
             </div>
-          </Reveal>
-          <Reveal className="tools-coordination-panel" delay={0.08}>
-            <div className="tools-panel-heading"><span className="tools-panel-kicker"><span /> Connected context</span><span>5 sources</span></div>
-            <div className="tools-panel-center"><span className="tools-panel-core"><Sparkles aria-hidden="true" size={20} /></span><span>Harvie</span></div>
-            <div className="tools-panel-lines" aria-hidden="true"><i /><i /><i /><i /><i /></div>
-            <div className="tools-panel-sources">
-              <span><Mail size={14} /> Inbox</span>
-              <span><CalendarDays size={14} /> Calendar</span>
-              <span><FileText size={14} /> Notes</span>
-              <span><CheckCircle2 size={14} /> Tasks</span>
-              <span><Globe2 size={14} /> APIs</span>
-            </div>
-            <div className="tools-panel-footer"><span>Objective</span><strong>Prepare this week</strong><ArrowRight aria-hidden="true" size={15} /></div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="privacy" className="landing-section landing-privacy-section">
-        <div className="landing-container landing-privacy-layout">
-          <Reveal className="landing-privacy-copy">
-            <div className="privacy-lock-mark"><LockKeyhole aria-hidden="true" size={18} /></div>
-            <h2>Your AI assistant. Your machine. Your data.</h2>
-            <p>Your personal assistant should feel personal. Harvie is built around giving you control over your data, your connections, and your AI environment.</p>
-            <p>Private by design. Your information isn&apos;t just another dataset for a generic chatbot.</p>
-          </Reveal>
-          <Reveal className="control-panel" delay={0.08}>
-            <div className="control-panel-heading"><ShieldCheck aria-hidden="true" size={18} /><span>Keep the control</span><span className="control-panel-state">Your rules</span></div>
-            <p>Harvie only becomes useful when it can work with your tools. Access should never mean giving up control.</p>
-            <ul>
-              <li><Check aria-hidden="true" size={15} /> What Harvie can access</li>
-              <li><Check aria-hidden="true" size={15} /> Which tools it can use</li>
-              <li><Check aria-hidden="true" size={15} /> What it can do and when it should act</li>
-              <li><Check aria-hidden="true" size={15} /> What stays private</li>
-            </ul>
-            <div className="control-panel-footer"><span className="control-panel-signal" /> You stay in control <ArrowRight aria-hidden="true" size={15} /></div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="landing-section landing-process-section">
-        <div className="landing-container">
-          <Reveal className="landing-section-intro landing-section-intro-narrow">
-            <h2>Tell Harvie what you need.</h2>
-            <p>Harvie understands the goal, uses the context it has access to, and keeps you informed about what happens next.</p>
-          </Reveal>
-          <div className="process-list">
-            <Reveal className="process-row" delay={0.02}>
-              <span className="process-number">01</span><div><h3>Tell it</h3><p>Give Harvie a goal, task, question, or problem.</p></div><span className="process-example">“Help me plan my week.”</span>
-            </Reveal>
-            <Reveal className="process-row" delay={0.07}>
-              <span className="process-number">02</span><div><h3>Harvie understands</h3><p>It uses your context, memory, and connected tools to understand what needs to happen.</p></div><span className="process-example">Context + memory</span>
-            </Reveal>
-            <Reveal className="process-row" delay={0.12}>
-              <span className="process-number">03</span><div><h3>Harvie acts</h3><p>It can research, organize, draft, coordinate, and perform actions through your connected tools.</p></div><span className="process-example">Research → organize → act</span>
-            </Reveal>
-            <Reveal className="process-row process-row-final" delay={0.17}>
-              <span className="process-number">04</span><div><h3>You stay in control</h3><p>Harvie keeps you informed and lets you decide what happens next.</p></div><span className="process-example">Review before action</span>
-            </Reveal>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      <section id="use-cases" className="landing-section landing-use-cases-section">
-        <div className="landing-container">
-          <Reveal className="landing-section-intro">
-            <h2>Built for the work between the work.</h2>
-            <p>From a clear morning plan to the follow-up you almost forgot, Harvie helps keep the important things moving.</p>
-          </Reveal>
-          <div className="use-case-grid">
-            {useCases.map((useCase, index) => {
-              const Icon = useCase.icon;
-              return (
-                <Reveal key={useCase.title} className="use-case-item" delay={index * 0.035}>
-                  <span className="use-case-icon"><Icon aria-hidden="true" size={17} /></span>
-                  <div><h3>{useCase.title}</h3><p>{useCase.prompt}</p></div>
-                  <ArrowUpRight aria-hidden="true" className="use-case-arrow" size={16} />
-                </Reveal>
-              );
-            })}
+      <footer className="border-t border-[#24272E]">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-6 px-6 py-8 md:flex-row md:items-center md:justify-between">
+          <div>
+            <Link href="/" className="group" aria-label="harvie, home">
+              <HarvieLogo />
+            </Link>
+            <p className="mt-2 text-sm text-[#6C7079]">The AI assistant that follows through.</p>
           </div>
-        </div>
-      </section>
-
-      <section className="landing-section landing-difference-section">
-        <div className="landing-container landing-difference-layout">
-          <Reveal className="landing-difference-copy">
-            <h2>AI that knows more than your last message.</h2>
-            <p>Useful assistance isn&apos;t just about producing a good answer. It&apos;s about knowing what happens next.</p>
-          </Reveal>
-          <Reveal className="difference-compare" delay={0.08}>
-            <div className="difference-compare-row difference-compare-muted"><span>Traditional AI</span><strong>Ask <i>→</i> Answer <i>→</i> Forget</strong></div>
-            <div className="difference-compare-row difference-compare-active"><span>Harvie</span><strong>Understand <i>→</i> Remember <i>→</i> Act <i>→</i> Follow through</strong></div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="get-started" className="landing-final-section">
-        <div className="landing-container landing-final-inner">
-          <Reveal className="landing-final-copy">
-            <p className="landing-final-kicker"><span className="landing-eyebrow-dot" /> A better way to work with AI</p>
-            <h2>Let your AI do more than answer.</h2>
-            <p>Give your work a memory. Give your tasks a follow-through. Give yourself an assistant.</p>
-            <div className="landing-final-action"><GetStartedButton /></div>
-          </Reveal>
-          <Reveal className="landing-final-tagline" delay={0.08}>
-            <Sparkles aria-hidden="true" size={19} />
-            <span>Your AI assistant.<br />Your machine.<br />Your data.</span>
-          </Reveal>
-        </div>
-      </section>
-
-      <footer className="landing-footer">
-        <div className="landing-container landing-footer-inner">
-          <Link href="/" className="landing-brand"><span className="landing-brand-mark" aria-hidden="true"><span /></span><span>harvie</span></Link>
-          <div className="landing-footer-links">
-            <a href="#what-is-harvie">Product</a>
-            <a href="#use-cases">Use cases</a>
-            <a href="#privacy">Privacy</a>
-            <a href="#how-it-works">How it works</a>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#A1A4AB]">
+            <a href="#product" className="hover:text-[#EDEDEF]">Product</a>
+            <a href="#how" className="hover:text-[#EDEDEF]">How it works</a>
+            <a href={GITHUB} className="hover:text-[#EDEDEF]" rel="noreferrer" target="_blank">Source</a>
+            <SignInLink />
           </div>
-          <div className="landing-footer-end">
-            <Show when="signed-out">
-              <SignInButton forceRedirectUrl="/app"><button type="button" className="landing-text-button">Sign in</button></SignInButton>
-            </Show>
-            <Show when="signed-in"><Link href="/app" className="landing-text-button">Open app</Link></Show>
-            <span>© {new Date().getFullYear()} Harvie</span>
-          </div>
+          <p className="text-sm text-[#6C7079]">© {new Date().getFullYear()} Harvie · harvie.me</p>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }

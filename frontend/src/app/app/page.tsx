@@ -9,7 +9,7 @@ export default async function HarvieAppPage() {
   }
 
   return (
-    <div className="alcor-app-shell">
+    <div className="harvie-app-shell">
       <HarvieDashboard key={userId} userId={userId} />
     </div>
   );
