@@ -129,8 +129,6 @@ function HeroOrb() {
       aria-label="A flowing lime-green Harvie orb"
     >
       <div className="hero-orb-crop" aria-hidden="true">
-        <div className="hero-orb-aura hero-orb-aura-one" />
-        <div className="hero-orb-aura hero-orb-aura-two" />
         <div className="hero-orb-render">
           <Nucleus />
         </div>
