@@ -1,23 +1,11 @@
 import type { Metadata } from 'next';
-import { JetBrains_Mono, Manrope, Sora } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { Providers } from './providers';
 import './globals.css';
 
-const sora = Sora({
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-sora',
-  display: 'swap',
-});
-
-const manrope = Manrope({
-  subsets: ['latin'],
-  variable: '--font-manrope',
-  display: 'swap',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
+  variable: '--font-inter',
   display: 'swap',
 });
 
@@ -32,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${sora.variable} ${manrope.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={inter.variable}>
       <body>
         <Providers>{children}</Providers>
       </body>

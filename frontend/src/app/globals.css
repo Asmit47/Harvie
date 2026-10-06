@@ -24,15 +24,15 @@
   --input: #27272a;
   --ring: #a3e635;
   --radius: 0.875rem;
-  --font-sans: var(--font-manrope);
-  --font-heading: var(--font-sora);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-inter);
+  --font-mono: var(--font-inter);
 }
 
 @theme inline {
-  --font-sans: var(--font-manrope);
-  --font-heading: var(--font-sora);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-inter);
+  --font-mono: var(--font-inter);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -70,7 +70,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-manrope), sans-serif;
+  font-family: var(--font-inter), sans-serif;
 }
 
 button,
@@ -284,7 +284,7 @@ button {
 .alcor-section h2 {
   max-width: 17ch;
   margin: 0;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: clamp(2rem, 4vw, 4.1rem);
   font-weight: 500;
   letter-spacing: -0.06em;
@@ -293,7 +293,7 @@ button {
 
 .alcor-kicker {
   margin: 0 0 18px;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.7rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -397,7 +397,7 @@ button {
   color: #132300;
   background: #a3e635;
   box-shadow: 0 0 75px rgba(163, 230, 53, 0.25);
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.88rem;
   transform: translate(-50%, -50%);
 }
@@ -419,7 +419,7 @@ button {
 
 .alcor-relationship-card h3 {
   margin: 8px 0 0;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 1.8rem;
   font-weight: 500;
   letter-spacing: -0.05em;
@@ -464,7 +464,7 @@ button {
   flex-wrap: wrap;
   gap: 12px;
   margin: 54px 0;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -521,7 +521,7 @@ button {
 .alcor-before p,
 .alcor-after p {
   margin: 0 0 26px;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.95rem;
   color: #fff;
 }
@@ -721,7 +721,7 @@ input:focus-visible {
   min-width: 0;
   gap: 9px;
   padding-left: 4px;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 14px;
   letter-spacing: -0.03em;
 }
@@ -980,7 +980,7 @@ input:focus-visible {
 }
 
 .sidebar-presence small {
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 10px;
 }
 
@@ -1397,7 +1397,7 @@ input:focus-visible {
   white-space: nowrap;
   transform: translateX(50%);
   color: rgba(228, 228, 231, 0.75);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1413,7 +1413,7 @@ input:focus-visible {
   width: max-content;
   max-width: min(88vw, 520px);
   color: #ffffff;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: clamp(18px, 2.1vw, 30px);
   font-weight: 500;
   line-height: 1.15;
@@ -1465,7 +1465,7 @@ input:focus-visible {
 .workspace-card-kind {
   gap: 7px;
   color: #a1a1aa;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 10px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -1487,7 +1487,7 @@ input:focus-visible {
 .workspace-card h2 {
   margin: 17px 0 0;
   color: #ffffff;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.03em;
@@ -1509,7 +1509,7 @@ input:focus-visible {
 .priority,
 .priority-high {
   color: #71717a;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1620,7 +1620,7 @@ input:focus-visible {
   color: #ffffff;
   background: transparent;
   font-size: 14px;
-  font-family: var(--font-manrope), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   line-height: 1.5;
 }
 
@@ -1658,7 +1658,7 @@ input:focus-visible {
   gap: 2px;
   margin: 0 5px;
   color: #71717a;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 10px;
 }
 
@@ -1897,7 +1897,7 @@ html {
   overflow: clip;
   color: var(--landing-text);
   background: var(--landing-bg);
-  font-family: var(--font-manrope), sans-serif;
+  font-family: var(--font-inter), sans-serif;
 }
 
 .landing-noise {
@@ -1938,7 +1938,7 @@ html {
   align-items: center;
   gap: 10px;
   color: var(--landing-text);
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 1.02rem;
   font-weight: 600;
   letter-spacing: -0.045em;
@@ -2117,7 +2117,7 @@ html {
   gap: 9px;
   margin: 0;
   color: var(--landing-lime-soft);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.67rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2135,7 +2135,7 @@ html {
 .landing-hero h1 {
   max-width: 9ch;
   margin: 27px 0 0;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: clamp(3.55rem, 5.7vw, 6rem);
   font-weight: 500;
   letter-spacing: -0.085em;
@@ -2174,7 +2174,7 @@ html {
   gap: 18px;
   padding-top: 20px;
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.61rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2232,7 +2232,7 @@ html {
   border-bottom: 1px solid var(--landing-border-soft);
   padding: 0 17px;
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.58rem;
   letter-spacing: 0.02em;
 }
@@ -2299,7 +2299,7 @@ html {
   border-right: 1px solid var(--landing-border-soft);
   padding: 22px 12px;
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.58rem;
 }
 
@@ -2331,7 +2331,7 @@ html {
   display: block;
   margin-bottom: 8px;
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.58rem;
   text-transform: uppercase;
 }
@@ -2339,7 +2339,7 @@ html {
 .scene-main-heading strong {
   display: block;
   color: var(--landing-text);
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 1.13rem;
   font-weight: 500;
   letter-spacing: -0.045em;
@@ -2419,7 +2419,7 @@ html {
   width: 38px;
   flex: none;
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.57rem;
 }
 
@@ -2472,7 +2472,7 @@ html {
 
 .scene-float span {
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.53rem;
   text-transform: uppercase;
 }
@@ -2550,7 +2550,7 @@ html {
 .capability-card-index,
 .process-number {
   color: var(--landing-lime);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.61rem;
   letter-spacing: 0.04em;
 }
@@ -2570,7 +2570,7 @@ html {
 .landing-section h2,
 .landing-final-section h2 {
   margin: 0;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: clamp(2.55rem, 4.6vw, 5rem);
   font-weight: 500;
   letter-spacing: -0.08em;
@@ -2636,7 +2636,7 @@ html {
 .tools-panel-footer,
 .control-panel-state {
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.61rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -2877,7 +2877,7 @@ html {
   max-width: 13ch;
   margin: 0;
   color: var(--landing-text);
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: clamp(1.5rem, 2.1vw, 2rem);
   font-weight: 500;
   letter-spacing: -0.065em;
@@ -2921,7 +2921,7 @@ html {
   justify-content: space-between;
   margin-bottom: 7px;
   color: #b8d887;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.55rem;
   text-transform: uppercase;
 }
@@ -2937,7 +2937,7 @@ html {
 .preview-day-row > span:last-child {
   margin-left: auto;
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.54rem;
 }
 
@@ -2976,7 +2976,7 @@ html {
 .preview-loop-row small {
   margin-left: auto;
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.53rem;
 }
 
@@ -3020,7 +3020,7 @@ html {
 .preview-action-status {
   margin-left: auto;
   color: #ad9473;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.53rem;
 }
 
@@ -3039,7 +3039,7 @@ html {
   min-height: 111px;
   padding: 12px;
   color: #b4d487;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.55rem;
   text-transform: uppercase;
 }
@@ -3149,7 +3149,7 @@ html {
   max-width: 25rem;
   margin: 24px 0 0;
   color: #c3c3c7;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: clamp(1.05rem, 1.6vw, 1.42rem);
   letter-spacing: -0.045em;
   line-height: 1.32;
@@ -3299,7 +3299,7 @@ html {
 .memory-record h3 {
   margin: 26px 21px 0;
   color: #f4f4f2;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 1.24rem;
   font-weight: 500;
   letter-spacing: -0.055em;
@@ -3327,7 +3327,7 @@ html {
 
 .memory-record-items span {
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.56rem;
   text-transform: uppercase;
 }
@@ -3364,7 +3364,7 @@ html {
 .landing-memory-copy .landing-highlight-line {
   margin-top: 24px;
   color: var(--landing-lime-soft);
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 1.34rem;
   letter-spacing: -0.04em;
 }
@@ -3430,7 +3430,7 @@ html {
   border-bottom: 1px solid var(--landing-border-soft);
   padding: 18px 20px;
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.57rem;
   text-transform: uppercase;
 }
@@ -3457,7 +3457,7 @@ html {
   justify-items: center;
   gap: 10px;
   color: #edf8dc;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.78rem;
   transform: translate(-50%, -50%);
 }
@@ -3548,7 +3548,7 @@ html {
 
 .tools-panel-footer span {
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.56rem;
   text-transform: uppercase;
 }
@@ -3607,7 +3607,7 @@ html {
 .control-panel-heading {
   gap: 9px;
   color: var(--landing-lime-soft);
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.91rem;
   font-weight: 500;
   letter-spacing: -0.025em;
@@ -3696,7 +3696,7 @@ html {
 .process-row h3 {
   margin: 0;
   color: #ededeb;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 1.1rem;
   font-weight: 500;
   letter-spacing: -0.045em;
@@ -3815,14 +3815,14 @@ html {
 
 .difference-compare-row > span {
   color: var(--landing-quiet);
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-inter), sans-serif;
   font-size: 0.58rem;
   text-transform: uppercase;
 }
 
 .difference-compare-row strong {
   color: #b1b1b5;
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: clamp(1.05rem, 1.8vw, 1.55rem);
   font-weight: 500;
   letter-spacing: -0.055em;
@@ -3899,7 +3899,7 @@ html {
   gap: 13px;
   justify-self: end;
   color: var(--landing-lime-soft);
-  font-family: var(--font-sora), sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: clamp(1.25rem, 2.1vw, 1.8rem);
   letter-spacing: -0.06em;
   line-height: 1.15;
