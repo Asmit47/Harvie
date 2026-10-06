@@ -63,7 +63,7 @@ export function FollowLoop() {
             <span className="relative block font-mono text-[11px] text-[#6C7079]">0{index + 1}</span>
             <span className="relative mt-1 block text-[13px] text-[#A1A4AB]">
               {step}
-              <span className="loop-hot absolute inset-0 text-[#F59E5B] opacity-0">{step}</span>
+              <span className="loop-hot absolute inset-0 text-[#F59E5B] opacity-0" aria-hidden="true">{step}</span>
             </span>
           </li>
         ))}

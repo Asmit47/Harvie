@@ -62,8 +62,8 @@ export function HarvieDashboard({ userId }: { userId: string }) {
 
   const sendMessageMutation = useMutation({
     mutationFn: ({ message, sessionId, requestId, choice }: { message: string; sessionId: string; requestId: string; choice?: MessageChoice }) => api.sendMessage(message, sessionId, requestId, choice),
-    onMutate: async ({ message, sessionId, requestId }) => {
-      setAgentStatus('thinking');
+    onMutate: async ({ message, sessionId, requestId, choice }) => {
+      setAgentStatus(choice ? 'acting' : 'thinking');
       setConversationNotice(null);
       setFailedSend(null);
       setPendingMessage(message);

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { Brain, CircleDot, Settings2, SunMedium, Workflow } from 'lucide-react';
-import { HarvieOrb, type OrbState } from '@/components/orb/harvie-orb';
+import { Nucleus, type OrbState } from '@/components/nucleus';
 
 const RAIL = [
   { label: 'Today', icon: SunMedium },
@@ -32,6 +32,7 @@ export function MeetHarvie() {
   const reduce = useReducedMotion();
   const [state, setState] = useState<OrbState>('idle');
   const [held, setHeld] = useState(false);
+  const pointerRef = useRef({ x: 0, y: 0.15 });
 
   useEffect(() => {
     if (held || reduce) return;
@@ -71,9 +72,20 @@ export function MeetHarvie() {
                 );
               })}
             </aside>
-            <div className="relative flex min-h-[420px] flex-col items-center justify-center px-4 py-10">
+            <div
+              className="relative flex min-h-[420px] flex-col items-center justify-center px-4 py-10"
+              onPointerMove={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                pointerRef.current = {
+                  x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                  y: -(((event.clientY - rect.top) / rect.height) * 2 - 1),
+                };
+              }}
+            >
               <p className="mb-2 text-center text-sm text-[#EDEDEF]">{STATUS[state]}</p>
-              <HarvieOrb state={state} interactive className="size-[240px] sm:size-[320px]" />
+              <div className="size-[280px] sm:size-[420px]">
+                <Nucleus state={state} pointerRef={pointerRef} />
+              </div>
               <div className="pointer-events-none absolute bottom-16 h-6 w-40 rounded-full bg-[#F59E5B]/25 blur-xl" aria-hidden="true" />
               <div className="mt-8 flex h-12 w-full max-w-md items-center rounded-full border border-[#24272E] bg-[#171A1F] px-4 text-sm text-[#6C7079]" aria-hidden="true">
                 Tell Harvie what you need

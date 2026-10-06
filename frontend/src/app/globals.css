@@ -1378,51 +1378,11 @@ input:focus-visible {
   .group:hover .harvie-i-dot {
     animation: harvie-dot-breathe 600ms ease;
   }
-
-  .orb-poster[data-state="idle"] {
-    animation: orb-breathe 4s ease-in-out infinite;
-  }
 }
 
 @keyframes harvie-dot-breathe {
   0%, 100% { transform: translateX(-50%) scale(1); }
   50% { transform: translateX(-50%) scale(1.15); }
-}
-
-@keyframes orb-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-}
-
-.orb-halo {
-  position: absolute;
-  inset: 8%;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(245, 158, 91, 0.32), rgba(139, 124, 246, 0.08) 52%, transparent 70%);
-  filter: blur(16px);
-  pointer-events: none;
-}
-
-.orb-poster {
-  position: absolute;
-  inset: 12%;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.9) 0 6%, transparent 18%),
-    radial-gradient(circle at 40% 38%, #ffd3a8 0%, #f59e5b 28%, #e8708f 58%, #8b7cf6 84%);
-  box-shadow: inset -16px -20px 30px rgba(28, 12, 36, 0.28), 0 0 40px rgba(245, 158, 91, 0.25);
-}
-
-.orb-poster[data-state="thinking"] {
-  box-shadow: inset -16px -20px 30px rgba(28, 12, 36, 0.28), 0 0 48px rgba(139, 124, 246, 0.35);
-}
-
-.orb-poster[data-state="acting"] {
-  box-shadow: inset -12px -16px 24px rgba(28, 12, 36, 0.2), 0 0 54px rgba(245, 158, 91, 0.45);
-}
-
-.orb-poster-hidden {
-  opacity: 0;
 }
 
 .loop-step[data-static="true"] .loop-hot {
@@ -1435,5 +1395,5 @@ html {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .orb-poster, .harvie-i-dot { animation: none; }
+  .harvie-i-dot { animation: none; }
 }

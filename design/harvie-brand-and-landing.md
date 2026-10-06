@@ -133,14 +133,14 @@ Built by, in `built-by.tsx` only: "Built by Asmit Kaushal, an AI builder in Indi
 - **GSAP** owns the follow-through loop and nothing else. One step lit at a time, 1.4s, by fading an ember overlay (opacity, not a color tween). ScrollTrigger pauses the timeline when the section is off screen. No scrub, no pin.
 - **Memory layers.** Hover or focus lifts the active plate 6px and drops the others to 50% opacity. Framer owns both.
 - **Send ring.** One opacity and scale pulse when the confirmation card enters. It does not loop.
-- **Orb.** React Three Fiber owns the mesh. Drei `PresentationControls` owns the pointer tilt, clamped to about 6 degrees. A custom shader owns color and motion. Idle breathes between scale 1 and 1.03 over 4 seconds. Listening adds a pointer ripple. Thinking speeds the swirl and shifts toward iris. Acting brightens ember and pulses one ring. State uniforms crossfade over about 600ms. The canvas lazy-loads, `ssr: false`, and mounts when the section is within 600px. `dpr` is capped at 1.75. The frame loop pauses off screen.
-- **Phones and reduced motion.** Below 768px, or when the device reports four cores or fewer, or when `prefers-reduced-motion: reduce` is set, the orb is the CSS gradient poster. State chips still change the status sentence. No entrance motion. The loop shows the Act step lit and does not play.
+- **Orb.** The hand-tuned Nucleus shader is the orb, on the landing page and in the dashboard. The plasma math stays. Ember replaces lime. Idle keeps the original slow drift. Listening adds a small pointer ripple. Thinking speeds the same field and tints it toward iris. Acting brightens the ember and adds one pulse ring. State blends in the draw loop, so the WebGL context is not rebuilt. The canvas pauses when it is off screen. Phones use the same shader. There is no second orb.
+- **Phones and reduced motion.** Phones use the same Nucleus shader. When `prefers-reduced-motion: reduce` is set, the shader draws one still frame at the selected state and the loop shows the Act step lit. No entrance motion.
 
 One owner per animated property. Do not animate layout, color, or filter on the same node from two libraries.
 
 ## Dashboard
 
-The real `/app` shell uses the same ink, surfaces, and ember accent. The draggable orb is the same `HarvieOrb`. Its state follows the workspace store: idle, listening (command field focused), thinking (a message is in flight). Acting is available for the same component on the landing page.
+The real `/app` shell uses the same ink, surfaces, and ember accent. The draggable orb is the same `Nucleus` shader. Its state follows the workspace store: idle, listening (command field focused), thinking (a message is in flight), and acting (the user confirms a suggested reply). The landing Meet Harvie section uses that same component and can hold any of the four states.
 
 Do not change Clerk routes, the command bar contract, open loops, connections, or memory dialogs beyond color and the orb.
 
