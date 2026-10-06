@@ -34,7 +34,6 @@ class TestConversationalOnboarding(TestCase):
         self.patch(chat_routes, "get_persona", self.get_persona)
         self.patch(profile_routes, "get_persona", self.get_persona)
         self.patch(conversation, "update_persona", self.update_persona)
-        self.patch(profile_routes, "update_persona", self.update_persona)
         self.learner = self.patch(chat_routes, "learn_persona_from_message")
         self.connected = self.patch(chat_routes.session_manager, "is_connected", return_value=False)
         self.model = self.start_patch(patch("harvie.nodes.generate_answer.llm_with_tools.invoke", return_value=AIMessage(content="I can help with that.")))
@@ -143,7 +142,7 @@ class TestConversationalOnboarding(TestCase):
         self.assertEqual(answered["profile"]["name"], "")
         system = self.model.call_args.args[0][0].content
         self.assertIn("waiting for the user's name", system)
-        self.assertIn("Before we get into work", system)
+        self.assertIn("The optional welcome is waiting for the user's name", system)
         self.reply("Asmit")
         self.assertEqual(self.model.call_count, 1)
         self.learner.assert_called_once_with("What can you help me with?")

@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   CircleDot,
   Clock3,
-  Command,
   FileText,
   Globe2,
   Inbox,
@@ -28,6 +27,7 @@ import {
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useState, type ReactNode } from 'react';
+import { Nucleus } from './nucleus';
 
 const capabilities = [
   {
@@ -121,85 +121,20 @@ function GetStartedButton({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function HeroScene() {
+function HeroOrb() {
   return (
     <div
-      className="hero-scene"
+      className="hero-orb"
       role="img"
-      aria-label="A Harvie workspace bringing email, calendar, notes, and tasks into one daily brief"
+      aria-label="A flowing lime-green Harvie orb"
     >
-      <div className="hero-scene-grid" />
-      <div className="hero-scene-glow" />
-      <div className="hero-scene-window">
-        <div className="scene-window-bar">
-          <div className="scene-window-brand">
-            <span className="scene-brand-dot" />
-            <span>harvie / workspace</span>
-          </div>
-          <div className="scene-window-status">
-            <span className="scene-status-dot" />
-            Private workspace
-          </div>
-        </div>
-        <div className="scene-window-body">
-          <aside className="scene-sidebar" aria-hidden="true">
-            <span className="scene-sidebar-active"><Command size={13} /> Today</span>
-            <span><Inbox size={13} /> Inbox</span>
-            <span><CheckCircle2 size={13} /> Open loops</span>
-            <span><StickyNote size={13} /> Memory</span>
-          </aside>
-          <div className="scene-main">
-            <div className="scene-main-heading">
-              <div>
-                <span className="scene-kicker">Tuesday, 14 May</span>
-                <strong>Your day, in context.</strong>
-              </div>
-              <span className="scene-avatar">H</span>
-            </div>
-            <div className="scene-summary">
-              <div className="scene-summary-icon"><Sparkles size={17} /></div>
-              <div>
-                <strong>Three things need your attention</strong>
-                <span>One meeting, two follow-ups, and a decision from yesterday.</span>
-              </div>
-            </div>
-            <div className="scene-timeline">
-              <div className="scene-timeline-row">
-                <span className="scene-time">09:30</span>
-                <span className="scene-timeline-line" />
-                <span><b>Product review</b><small>Calendar · prepared with open decisions</small></span>
-              </div>
-              <div className="scene-timeline-row scene-timeline-row-highlight">
-                <span className="scene-time">11:45</span>
-                <span className="scene-timeline-line" />
-                <span><b>Follow-up ready</b><small>Email · draft waiting for your review</small></span>
-              </div>
-              <div className="scene-timeline-row">
-                <span className="scene-time">16:00</span>
-                <span className="scene-timeline-line" />
-                <span><b>Unfinished work</b><small>Task · carry forward or close the loop</small></span>
-              </div>
-            </div>
-          </div>
+      <div className="hero-orb-crop" aria-hidden="true">
+        <div className="hero-orb-aura hero-orb-aura-one" />
+        <div className="hero-orb-aura hero-orb-aura-two" />
+        <div className="hero-orb-render">
+          <Nucleus />
         </div>
       </div>
-      <div className="scene-float scene-float-mail">
-        <Mail size={14} />
-        <span>New context</span>
-        <b>2 emails</b>
-      </div>
-      <div className="scene-float scene-float-calendar">
-        <CalendarDays size={14} />
-        <span>Next up</span>
-        <b>Design review</b>
-      </div>
-      <div className="scene-float scene-float-memory">
-        <StickyNote size={14} />
-        <span>Remembered</span>
-        <b>Prefers concise updates</b>
-      </div>
-      <div className="scene-path scene-path-one" />
-      <div className="scene-path scene-path-two" />
     </div>
   );
 }
@@ -329,7 +264,7 @@ export function LandingPage() {
             </div>
           </Reveal>
           <Reveal className="landing-hero-visual" delay={0.1}>
-            <HeroScene />
+            <HeroOrb />
           </Reveal>
         </div>
         <div className="landing-container landing-hero-bottom">

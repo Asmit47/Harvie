@@ -82,6 +82,7 @@ export function Nucleus() {
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // premultiplied-alpha blend
+    gl.clearColor(0, 0, 0, 0);
 
     const compile = (type: number, source: string) => {
       const shader = gl.createShader(type)!;
@@ -111,6 +112,9 @@ export function Nucleus() {
 
     let frame = 0;
     const render = (now: number) => {
+      // Clear the transparent pixels every frame so the fluid field can move
+      // without leaving an opaque or black trail behind it.
+      gl.clear(gl.COLOR_BUFFER_BIT);
       gl.uniform1f(timeLoc, reduceMotion ? 0 : now * 0.001);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       if (!reduceMotion) frame = requestAnimationFrame(render);
