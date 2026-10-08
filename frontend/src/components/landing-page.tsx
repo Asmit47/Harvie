@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Show, SignInButton, SignUpButton } from '@clerk/nextjs';
+import Image from 'next/image';
+import { Show, SignInButton, SignOutButton, SignUpButton } from '@clerk/nextjs';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -25,7 +26,7 @@ import {
   StickyNote,
   X,
 } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useMotionValueEvent, useReducedMotion, useScroll } from 'framer-motion';
 import { useState, type ReactNode } from 'react';
 import { Nucleus } from './nucleus';
 
@@ -108,7 +109,7 @@ function GetStartedButton({ compact = false }: { compact?: boolean }) {
       <Show when="signed-out">
         <SignUpButton forceRedirectUrl="/app">
           <button type="button" className={className}>
-            Get started <ArrowUpRight aria-hidden="true" size={16} strokeWidth={1.8} />
+            Try Beta <ArrowUpRight aria-hidden="true" size={16} strokeWidth={1.8} />
           </button>
         </SignUpButton>
       </Show>
@@ -116,6 +117,25 @@ function GetStartedButton({ compact = false }: { compact?: boolean }) {
         <Link href="/app" className={className}>
           Open Harvie <ArrowUpRight aria-hidden="true" size={16} strokeWidth={1.8} />
         </Link>
+      </Show>
+    </>
+  );
+}
+
+function LandingAuthButton() {
+  return (
+    <>
+      <Show when="signed-out">
+        <SignInButton forceRedirectUrl="/app">
+          <button type="button" className="landing-auth-button landing-auth-button-primary">
+            Sign in <ArrowUpRight aria-hidden="true" size={15} strokeWidth={2} />
+          </button>
+        </SignInButton>
+      </Show>
+      <Show when="signed-in">
+        <SignOutButton>
+          <button type="button" className="landing-auth-button">Sign out</button>
+        </SignOutButton>
       </Show>
     </>
   );
@@ -188,6 +208,13 @@ function CapabilityPreview({ type }: { type: string }) {
 
 export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navElevated, setNavElevated] = useState(false);
+  const { scrollY } = useScroll();
+
+  useMotionValueEvent(scrollY, 'change', (latest) => {
+    const shouldElevate = latest > 56;
+    setNavElevated((current) => current === shouldElevate ? current : shouldElevate);
+  });
 
   function closeMenu() {
     setMenuOpen(false);
@@ -196,13 +223,17 @@ export function LandingPage() {
   return (
     <main className="harvie-landing">
       <div className="landing-noise" aria-hidden="true" />
-      <nav className="landing-nav" aria-label="Primary navigation">
-        <div className="landing-container landing-nav-inner">
-          <Link href="/" className="landing-brand" onClick={closeMenu}>
-            <span className="landing-brand-mark" aria-hidden="true"><span /></span>
-            <span>harvie</span>
+      <motion.nav
+        className={`landing-nav ${navElevated ? 'landing-nav-elevated' : ''}`}
+        aria-label="Primary navigation"
+        initial={{ y: -18, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="landing-container landing-wide-container landing-nav-inner">
+          <Link href="/" className="landing-brand" onClick={closeMenu} aria-label="Harvie home">
+            <Image src="/harvie-logo.svg" alt="" width={20} height={28} priority />
           </Link>
-
           <div className="landing-nav-links">
             <a href="#what-is-harvie">Product</a>
             <a href="#how-it-works">How it works</a>
@@ -210,15 +241,7 @@ export function LandingPage() {
           </div>
 
           <div className="landing-nav-actions">
-            <Show when="signed-out">
-              <SignInButton forceRedirectUrl="/app">
-                <button type="button" className="landing-text-button">Sign in</button>
-              </SignInButton>
-            </Show>
-            <Show when="signed-in">
-              <Link href="/app" className="landing-text-button">Open app</Link>
-            </Show>
-            <GetStartedButton compact />
+            <LandingAuthButton />
           </div>
 
           <button
@@ -236,40 +259,29 @@ export function LandingPage() {
           <a href="#how-it-works" onClick={closeMenu}>How it works <ArrowUpRight aria-hidden="true" size={16} /></a>
           <a href="#privacy" onClick={closeMenu}>Privacy <ArrowUpRight aria-hidden="true" size={16} /></a>
           <div className="landing-mobile-actions">
-            <Show when="signed-out">
-              <SignInButton forceRedirectUrl="/app">
-                <button type="button" className="landing-text-button">Sign in</button>
-              </SignInButton>
-            </Show>
-            <GetStartedButton />
+            <LandingAuthButton />
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
       <section className="landing-hero" aria-labelledby="hero-title">
-        <div className="landing-container landing-hero-grid">
+        <div className="landing-container landing-wide-container landing-hero-grid">
           <Reveal className="landing-hero-copy">
-            <p className="landing-eyebrow"><span className="landing-eyebrow-dot" /> Personal AI agent for everyday work</p>
-            <h1 id="hero-title">
-              <span>Your AI assistant.</span>
-              <span>Your machine.</span>
-              <span>Your data.</span>
-            </h1>
-            <p className="landing-hero-description">Harvie works alongside you to plan, remember, organize, and take action across the tools you use every day.</p>
+            <h1 id="hero-title">Meet Harvie</h1>
+            <p className="landing-hero-lede">Your personal work agent.</p>
+            <p className="landing-hero-lede landing-hero-lede-soft">An agent that stays one step ahead.</p>
+            <p className="landing-hero-description">
+              Harvie remembers what matters, keeps track of your work, and reaches out when something needs your attention — without waiting for you to ask.
+            </p>
             <div className="landing-hero-actions">
               <GetStartedButton />
               <a href="#how-it-works" className="landing-button landing-button-secondary">See how it works <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} /></a>
             </div>
           </Reveal>
-          <Reveal className="landing-hero-visual" delay={0.1}>
-            <HeroOrb />
-          </Reveal>
         </div>
-        <div className="landing-container landing-hero-bottom">
-          <span>Private by design.</span>
-          <span>Built to work with you.</span>
-          <span>Made for follow-through.</span>
-        </div>
+        <Reveal className="landing-hero-visual" delay={0.1}>
+          <HeroOrb />
+        </Reveal>
       </section>
 
       <section className="landing-proof-line" aria-label="Harvie principles">
@@ -526,10 +538,7 @@ export function LandingPage() {
             <a href="#how-it-works">How it works</a>
           </div>
           <div className="landing-footer-end">
-            <Show when="signed-out">
-              <SignInButton forceRedirectUrl="/app"><button type="button" className="landing-text-button">Sign in</button></SignInButton>
-            </Show>
-            <Show when="signed-in"><Link href="/app" className="landing-text-button">Open app</Link></Show>
+            <GetStartedButton compact />
             <span>© {new Date().getFullYear()} Harvie</span>
           </div>
         </div>
