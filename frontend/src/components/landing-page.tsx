@@ -13,21 +13,28 @@ import {
   Clock3,
   FileText,
   Globe2,
-  Inbox,
   Layers3,
   LockKeyhole,
   Mail,
   Menu,
+  MessageCircle,
   Network,
-  Search,
   Send,
   ShieldCheck,
   Sparkles,
   StickyNote,
   X,
 } from 'lucide-react';
-import { motion, useMotionValueEvent, useReducedMotion, useScroll } from 'framer-motion';
-import { useState, type ReactNode } from 'react';
+import {
+  AnimatePresence,
+  motion,
+  useInView,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from 'framer-motion';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Nucleus } from './nucleus';
 
 const capabilities = [
@@ -65,22 +72,49 @@ const capabilities = [
   },
 ];
 
-const useCases = [
-  { title: 'Plan your day', prompt: 'What should I focus on today?', icon: CalendarDays },
-  { title: 'Manage your inbox', prompt: 'Find the emails I need to respond to.', icon: Inbox },
-  { title: 'Prepare for meetings', prompt: 'Prepare me for my 2 PM meeting.', icon: FileText },
-  { title: 'Stay on top of tasks', prompt: "What am I forgetting this week?", icon: CheckCircle2 },
-  { title: 'Research', prompt: 'Research these companies and summarize what matters.', icon: Search },
-  { title: 'Follow up', prompt: "Who haven't I followed up with this week?", icon: Send },
-  { title: 'Personal organization', prompt: 'I have a lot going on. Help me organize it.', icon: Layers3 },
-];
-
 const toolConnections = [
   { name: 'Gmail', icon: Mail },
   { name: 'Google Calendar', icon: CalendarDays },
   { name: 'Work tools', icon: Layers3 },
   { name: 'Your data', icon: FileText },
   { name: 'APIs & services', icon: Globe2 },
+];
+
+const loopSteps = [
+  { node: 'Understand', label: 'Objective understood', kind: 'understand' },
+  { node: 'Remember', label: 'Saved to memory', kind: 'remember' },
+  { node: 'Anticipate', label: 'Surfaced at the right time', kind: 'anticipate' },
+  { node: 'Act', label: 'Working, with review points', kind: 'act' },
+  { node: 'Follow through', label: 'After the conversation ends', kind: 'follow' },
+] as const;
+
+type LoopKind = (typeof loopSteps)[number]['kind'];
+
+const moments = [
+  {
+    time: '07:30',
+    node: 'is-lime',
+    text: 'Four priorities today. The pricing review is the one that can’t move.',
+    tag: 'Morning planned around it',
+  },
+  {
+    time: '10:14',
+    node: 'is-lime',
+    text: 'Tomorrow’s meeting moved to 11:00. The agenda still references the old deck.',
+    tag: 'Mismatch caught early',
+  },
+  {
+    time: '14:20',
+    node: 'is-warm',
+    text: 'Still waiting on Rahul for the numbers. I can draft the follow-up.',
+    actions: true,
+  },
+  {
+    time: '18:15',
+    node: '',
+    text: 'Wrapped for today. The proposal is drafted — one decision left for tomorrow.',
+    tag: 'Nothing left overnight',
+  },
 ];
 
 function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
@@ -90,7 +124,7 @@ function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; 
     <motion.div
       className={className}
       initial={reduceMotion ? false : { opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.16 }}
       transition={{ duration: 0.65, delay, ease: [0.16, 1, 0.3, 1] }}
     >
@@ -157,12 +191,188 @@ function HeroOrb() {
   );
 }
 
+function FinalOrb() {
+  return (
+    <div className="final-orb" role="img" aria-label="The Harvie orb, calm and steady">
+      <div className="final-orb-crop" aria-hidden="true">
+        <div className="final-orb-render">
+          <Nucleus />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Typewriter({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-15% 0px' });
+  const reduceMotion = useReducedMotion();
+  const [count, setCount] = useState(0);
+  const done = count >= text.length;
+
+  useEffect(() => {
+    if (!inView) {
+      return;
+    }
+    if (reduceMotion) {
+      setCount(text.length);
+      return;
+    }
+    let i = 0;
+    const timer = window.setInterval(() => {
+      i += 1;
+      setCount(i);
+      if (i >= text.length) {
+        window.clearInterval(timer);
+      }
+    }, 34);
+    return () => window.clearInterval(timer);
+  }, [inView, reduceMotion, text]);
+
+  return (
+    <span ref={ref}>
+      {text.slice(0, count)}
+      {!done && count > 0 ? <span className="type-caret" aria-hidden="true" /> : null}
+    </span>
+  );
+}
+
+function LoopVignette({ kind }: { kind: LoopKind }) {
+  if (kind === 'understand') {
+    return (
+      <>
+        <p className="loop-vignette-quote">“Help me prepare for tomorrow.”</p>
+        <div className="loop-vignette-chips">
+          <span><Check size={12} /> Calendar gathered</span>
+          <span><Check size={12} /> Inbox gathered</span>
+          <span><Check size={12} /> Notes gathered</span>
+        </div>
+      </>
+    );
+  }
+
+  if (kind === 'remember') {
+    return (
+      <>
+        <p className="loop-vignette-note">The details that matter are kept for next time — not lost when the chat closes.</p>
+        <div className="loop-vignette-chips">
+          <span><StickyNote size={12} /> Client · Acme</span>
+          <span><Clock3 size={12} /> Due · Friday</span>
+          <span><StickyNote size={12} /> Waiting on · Rahul</span>
+        </div>
+      </>
+    );
+  }
+
+  if (kind === 'anticipate') {
+    return (
+      <>
+        <p className="loop-vignette-note">“Tomorrow’s agenda still references the old pricing.”</p>
+        <span className="loop-vignette-tag">One heads-up, not a feed of noise</span>
+      </>
+    );
+  }
+
+  if (kind === 'act') {
+    return (
+      <div className="loop-vignette-list">
+        <span><Check size={13} /> Gathers the latest context</span>
+        <span><Check size={13} /> Drafts the updated brief</span>
+        <span className="is-gated"><CircleDot size={13} /> Final pricing decision <em>Needs your approval</em></span>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <p className="loop-vignette-note">“Recap drafted. Tuesday’s check-in is on the calendar.”</p>
+      <span className="loop-vignette-tag">Ready for your review</span>
+    </>
+  );
+}
+
+function LoopRail() {
+  const railRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: railRef, offset: ['start start', 'end end'] });
+  const [active, setActive] = useState(0);
+
+  useMotionValueEvent(scrollYProgress, 'change', (value) => {
+    const next = Math.min(loopSteps.length - 1, Math.floor(value * loopSteps.length));
+    setActive((current) => (current === next ? current : next));
+  });
+
+  const pulseLeft = useTransform(scrollYProgress, (value) => `calc(${10 + value * 80}% + ${16 - value * 32}px)`);
+  const progressScale = useTransform(scrollYProgress, [0, 1], [0, 1]);
+
+  if (reduceMotion) {
+    return (
+      <div className="loop-static">
+        {loopSteps.map((step) => (
+          <div key={step.kind} className="loop-static-row">
+            <strong>{step.node}</strong>
+            <LoopVignette kind={step.kind} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="loop-rail-wrap" ref={railRef}>
+      <div className="loop-rail-sticky">
+        <div className="loop-rail">
+          <i className="loop-rail-line" aria-hidden="true" />
+          <motion.i className="loop-rail-progress" style={{ scaleX: progressScale }} aria-hidden="true" />
+          <motion.i className="loop-pulse" style={{ left: pulseLeft }} aria-hidden="true" />
+          {loopSteps.map((step, index) => (
+            <div
+              key={step.kind}
+              className={`loop-node${index < active ? ' is-past' : ''}${index === active ? ' is-active' : ''}`}
+            >
+              <span className="loop-node-dot"><i /></span>
+              <span>{step.node}</span>
+            </div>
+          ))}
+        </div>
+        <div className="loop-vignette-stage">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={active}
+              className="loop-vignette"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <span className="loop-vignette-label">{loopSteps[active].label}</span>
+              <LoopVignette kind={loopSteps[active].kind} />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CapabilityPreview({ type }: { type: string }) {
+  const reduceMotion = useReducedMotion();
+  const spring = { type: 'spring', stiffness: 300, damping: 16 } as const;
+
   if (type === 'day') {
     return (
       <div className="capability-preview capability-preview-day" aria-hidden="true">
         <div className="preview-day-head"><span>Today</span><span>3 priorities</span></div>
-        <div className="preview-day-row preview-day-row-active"><span className="preview-check" />Prepare for the product review<span>09:30</span></div>
+        <div className="preview-day-row preview-day-row-active">
+          <motion.span
+            className="preview-check"
+            initial={reduceMotion ? false : { scale: 0 }}
+            whileInView={reduceMotion ? undefined : { scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ ...spring, delay: 0.35 }}
+          />
+          Prepare for the product review<span>09:30</span>
+        </div>
         <div className="preview-day-row"><span className="preview-check" />Reply to the open thread<span>11:45</span></div>
         <div className="preview-day-row"><span className="preview-check" />Decide what moves to tomorrow<span>16:00</span></div>
       </div>
@@ -172,7 +382,16 @@ function CapabilityPreview({ type }: { type: string }) {
   if (type === 'loops') {
     return (
       <div className="capability-preview capability-preview-loops" aria-hidden="true">
-        <div className="preview-loop-row"><span className="preview-loop-dot preview-loop-dot-lime" /><span>Reply to Maya</span><small>Yesterday</small></div>
+        <div className="preview-loop-row">
+          <motion.span
+            className="preview-loop-dot preview-loop-dot-lime"
+            initial={reduceMotion ? false : { scale: 0 }}
+            whileInView={reduceMotion ? undefined : { scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ ...spring, delay: 0.3 }}
+          />
+          <span>Reply to Maya</span><small>Yesterday</small>
+        </div>
         <div className="preview-loop-row"><span className="preview-loop-dot" /><span>Confirm the next check-in</span><small>2 days</small></div>
         <div className="preview-loop-row"><span className="preview-loop-dot preview-loop-dot-warm" /><span>Review the open decision</span><small>Friday</small></div>
       </div>
@@ -183,8 +402,30 @@ function CapabilityPreview({ type }: { type: string }) {
     return (
       <div className="capability-preview capability-preview-actions" aria-hidden="true">
         <div className="preview-action-heading"><span className="preview-action-icon"><Send size={13} /></span><span>Objective in progress</span><span className="preview-action-status">3 / 4</span></div>
-        <div className="preview-action-line"><Check size={13} /> Gather the latest context</div>
-        <div className="preview-action-line"><Check size={13} /> Draft the follow-up</div>
+        <div className="preview-action-line">
+          <motion.span
+            initial={reduceMotion ? false : { scale: 0 }}
+            whileInView={reduceMotion ? undefined : { scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ ...spring, delay: 0.25 }}
+            style={{ display: 'inline-flex' }}
+          >
+            <Check size={13} />
+          </motion.span>
+          Gather the latest context
+        </div>
+        <div className="preview-action-line">
+          <motion.span
+            initial={reduceMotion ? false : { scale: 0 }}
+            whileInView={reduceMotion ? undefined : { scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ ...spring, delay: 0.5 }}
+            style={{ display: 'inline-flex' }}
+          >
+            <Check size={13} />
+          </motion.span>
+          Draft the follow-up
+        </div>
         <div className="preview-action-line"><CircleDot size={13} /> Review before sending</div>
       </div>
     );
@@ -198,9 +439,27 @@ function CapabilityPreview({ type }: { type: string }) {
         <span className="preview-memory-node preview-memory-node-one">Preference</span>
         <span className="preview-memory-node preview-memory-node-two">Decision</span>
         <span className="preview-memory-node preview-memory-node-three">Next step</span>
-        <i className="preview-memory-link preview-memory-link-one" />
-        <i className="preview-memory-link preview-memory-link-two" />
-        <i className="preview-memory-link preview-memory-link-three" />
+        <motion.i
+          className="preview-memory-link preview-memory-link-one"
+          initial={reduceMotion ? false : { scaleX: 0, rotate: 22 }}
+          whileInView={reduceMotion ? undefined : { scaleX: 1, rotate: 22 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        />
+        <motion.i
+          className="preview-memory-link preview-memory-link-two"
+          initial={reduceMotion ? false : { scaleX: 0, rotate: -21 }}
+          whileInView={reduceMotion ? undefined : { scaleX: 1, rotate: -21 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        />
+        <motion.i
+          className="preview-memory-link preview-memory-link-three"
+          initial={reduceMotion ? false : { scaleX: 0, rotate: 27 }}
+          whileInView={reduceMotion ? undefined : { scaleX: 1, rotate: 27 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        />
       </div>
     </div>
   );
@@ -235,9 +494,9 @@ export function LandingPage() {
             <Image src="/harvie-logo.svg" alt="" width={20} height={28} priority />
           </Link>
           <div className="landing-nav-links">
-            <a href="#what-is-harvie">Product</a>
-            <a href="#how-it-works">How it works</a>
-            <a href="#privacy">Privacy</a>
+            <a href="#work-between-the-work">Product</a>
+            <a href="#loop">How it works</a>
+            <a href="#control">Privacy</a>
           </div>
 
           <div className="landing-nav-actions">
@@ -255,81 +514,164 @@ export function LandingPage() {
           </button>
         </div>
         <div className={`landing-mobile-menu ${menuOpen ? 'landing-mobile-menu-open' : ''}`}>
-          <a href="#what-is-harvie" onClick={closeMenu}>Product <ArrowUpRight aria-hidden="true" size={16} /></a>
-          <a href="#how-it-works" onClick={closeMenu}>How it works <ArrowUpRight aria-hidden="true" size={16} /></a>
-          <a href="#privacy" onClick={closeMenu}>Privacy <ArrowUpRight aria-hidden="true" size={16} /></a>
+          <a href="#work-between-the-work" onClick={closeMenu}>Product <ArrowUpRight aria-hidden="true" size={16} /></a>
+          <a href="#loop" onClick={closeMenu}>How it works <ArrowUpRight aria-hidden="true" size={16} /></a>
+          <a href="#control" onClick={closeMenu}>Privacy <ArrowUpRight aria-hidden="true" size={16} /></a>
           <div className="landing-mobile-actions">
             <LandingAuthButton />
           </div>
         </div>
       </motion.nav>
 
+      {/* 1 — Hero */}
       <section className="landing-hero" aria-labelledby="hero-title">
         <div className="landing-container landing-wide-container landing-hero-grid">
           <Reveal className="landing-hero-copy">
             <h1 id="hero-title">Meet Harvie</h1>
             <p className="landing-hero-lede">Your personal work agent.</p>
-            <p className="landing-hero-lede landing-hero-lede-soft">An agent that stays one step ahead.</p>
+            <p className="landing-hero-lede landing-hero-lede-soft">The AI that stays one step ahead.</p>
             <p className="landing-hero-description">
               Harvie remembers what matters, keeps track of your work, and reaches out when something needs your attention — without waiting for you to ask.
             </p>
             <div className="landing-hero-actions">
               <GetStartedButton />
-              <a href="#how-it-works" className="landing-button landing-button-secondary">See how it works <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} /></a>
+              <a href="#loop" className="landing-button landing-button-secondary">See how it works <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} /></a>
             </div>
           </Reveal>
         </div>
-        <Reveal className="landing-hero-visual" delay={0.1}>
+        <div className="landing-hero-visual">
           <HeroOrb />
-        </Reveal>
-      </section>
-
-      <section className="landing-proof-line" aria-label="Harvie principles">
-        <div className="landing-container landing-proof-grid">
-          <div><span>01</span><strong>Context that carries forward</strong></div>
-          <div><span>02</span><strong>Actions you can review</strong></div>
-          <div><span>03</span><strong>Control over your data</strong></div>
+          <Reveal className="hero-moment-wrap" delay={0.45}>
+            <div className="hero-moment" aria-hidden="true">
+              <div className="hero-moment-head">
+                <span className="hero-moment-source"><Mail size={12} /> Inbox · Calendar</span>
+                <span>9:02</span>
+              </div>
+              <p>The client moved tomorrow’s review to 11:00. The proposal is still missing pricing — want me to flag it?</p>
+              <div className="hero-moment-actions">
+                <span className="is-approve"><Check size={11} /> Yes, flag it</span>
+                <span>Later</span>
+              </div>
+            </div>
+          </Reveal>
+          <span className="hero-chip hero-chip-mail" aria-hidden="true"><Mail size={12} /> Email</span>
+          <span className="hero-chip hero-chip-task" aria-hidden="true"><CheckCircle2 size={12} /> Tasks</span>
+          <i className="hero-trail hero-trail-one" aria-hidden="true" />
+          <i className="hero-trail hero-trail-three" aria-hidden="true" />
         </div>
       </section>
 
-      <section id="what-is-harvie" className="landing-section landing-intro-section">
-        <div className="landing-container landing-intro-layout">
-          <Reveal className="landing-intro-copy">
-            <h2>An AI assistant that actually works alongside you.</h2>
-            <p>Most AI assistants wait for a question. Harvie understands your context, remembers what matters, works with the tools you already use, and helps move things forward.</p>
-            <p>Think of it as an assistant that is always available, without needing to explain everything again.</p>
+      {/* 2 — The problem */}
+      <section id="problem" className="landing-section landing-problem-section">
+        <div className="landing-container landing-problem-layout">
+          <Reveal className="landing-problem-copy">
+            <p className="landing-kicker">The problem</p>
+            <h2>Your work doesn’t live in one place. Your agent only sees one.</h2>
+            <p>A deadline buried in an email. A promise made in a conversation. A number you’re still waiting on. The work between the work is scattered across tools, threads, and days — and it’s usually the work that matters most.</p>
+            <p>Most AI sees the message in front of it. When the conversation ends, everything you explained leaves with it.</p>
           </Reveal>
-          <Reveal className="landing-context-panel" delay={0.08}>
-            <div className="context-panel-top"><span className="context-panel-label">Harvie’s working context</span><span className="context-panel-state"><span /> Ready</span></div>
-            <div className="context-panel-list">
-              <div><span className="context-panel-icon"><Network size={16} /></span><span><strong>Understands the work around your request</strong><small>Not just the last message.</small></span><CheckCircle2 aria-hidden="true" size={17} /></div>
-              <div><span className="context-panel-icon"><StickyNote size={16} /></span><span><strong>Remembers useful context and preferences</strong><small>So you can continue where you left off.</small></span><CheckCircle2 aria-hidden="true" size={17} /></div>
-              <div><span className="context-panel-icon"><Send size={16} /></span><span><strong>Turns objectives into next steps</strong><small>With review points when they matter.</small></span><CheckCircle2 aria-hidden="true" size={17} /></div>
+          <Reveal className="scatter-board" delay={0.08}>
+            <div className="scatter-field" aria-hidden="true">
+              <div className="scatter-fragment scatter-fragment-mail">
+                <span className="scatter-fragment-head"><Mail size={13} /></span>
+                <div><strong>Forward the updated proposal</strong><small>Maya · Tue 17:42</small></div>
+              </div>
+              <div className="scatter-fragment scatter-fragment-cal">
+                <span className="scatter-fragment-head"><CalendarDays size={13} /></span>
+                <div><strong>Client review — moved to 11:00</strong><small>Friday</small></div>
+              </div>
+              <div className="scatter-fragment scatter-fragment-chat">
+                <span className="scatter-fragment-head"><MessageCircle size={13} /></span>
+                <div><strong>“Can you send the numbers today?”</strong><small>Rahul · thread</small></div>
+              </div>
+              <div className="scatter-fragment scatter-fragment-note">
+                <span className="scatter-fragment-head"><StickyNote size={13} /></span>
+                <div><strong>Pricing section — TBD</strong><small>Half-written note</small></div>
+              </div>
+              <div className="scatter-fragment scatter-fragment-task">
+                <span className="scatter-fragment-head"><CheckCircle2 size={13} /></span>
+                <div><strong>Follow up after the review</strong><small>No due date</small></div>
+              </div>
+            </div>
+            <div className="scatter-thread" aria-hidden="true">Harvie holds the thread</div>
+            <div className="scatter-transcript" aria-hidden="true">
+              <div className="scatter-transcript-line is-old"><span>You</span><p>Here’s all the context on the Acme proposal…</p></div>
+              <div className="scatter-transcript-line"><span>Assistant</span><p>Got it — here’s a summary.</p></div>
+              <div className="scatter-transcript-end"><span>Ask</span><i>→</i><span>Answer</span><i>→</i><span>Forget</span></div>
             </div>
           </Reveal>
         </div>
       </section>
 
-      <section className="landing-section landing-manifesto-section">
-        <div className="landing-container landing-manifesto-layout">
-          <Reveal className="landing-manifesto-copy">
-            <h2>More than a chatbot.</h2>
-            <p>Harvie isn&apos;t designed around endless conversations. It&apos;s designed around getting things done.</p>
-          </Reveal>
-          <Reveal className="landing-manifesto-steps" delay={0.08}>
-            <div><span>01</span><strong>You tell Harvie what matters.</strong></div>
-            <div><span>02</span><strong>Harvie understands the context.</strong></div>
-            <div><span>03</span><strong>It figures out what needs to happen.</strong></div>
-            <div className="landing-manifesto-step-active"><span>04</span><strong>Then it helps make it happen.</strong><ArrowRight aria-hidden="true" size={18} /></div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="capabilities" className="landing-section landing-capabilities-section">
+      {/* 3 — The loop */}
+      <section id="loop" className="landing-section landing-loop-section">
         <div className="landing-container">
           <Reveal className="landing-section-intro">
+            <p className="landing-kicker">What makes Harvie different</p>
+            <h2>Most AI waits to be asked. Harvie works in a loop.</h2>
+            <p>Harvie isn’t organized around conversations. It’s organized around your work — building context, carrying it forward, watching for what needs attention, and keeping commitments moving after the conversation ends.</p>
+          </Reveal>
+          <Reveal className="loop-compare" delay={0.05}>
+            <div className="difference-compare-row difference-compare-muted">
+              <span>Typical assistant</span>
+              <strong>Ask <i>→</i> Answer <i>→</i> Start over</strong>
+            </div>
+            <div className="difference-compare-row difference-compare-active">
+              <span>Harvie</span>
+              <strong>Understand <i>→</i> Remember <i>→</i> Anticipate <i>→</i> Act <i>→</i> Follow through</strong>
+            </div>
+          </Reveal>
+          <LoopRail />
+        </div>
+      </section>
+
+      {/* 4 — Harvie notices */}
+      <section id="moments" className="landing-section landing-moments-section">
+        <div className="landing-container landing-moments-layout">
+          <Reveal className="landing-moments-copy">
+            <p className="landing-kicker">One step ahead</p>
+            <h2>The right thing, at the right time. Not a feed of noise.</h2>
+            <p>Harvie speaks up when something actually needs you — a missing piece before a meeting, a commitment you made last week, a number you’re still waiting on. And it stays quiet when everything is on track.</p>
+            <p className="landing-moments-foot"><span className="landing-eyebrow-dot" /> No pings for the sake of pinging. Harvie surfaces what matters.</p>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <div className="moments-day" aria-hidden="true">
+              <div className="moments-day-head">
+                <span>Today</span>
+                <span className="moments-day-state"><i /> 4 surfaced · nothing forced</span>
+              </div>
+              {moments.map((moment) => (
+                <div key={moment.time} className="moment-row">
+                  <span className="moment-time">{moment.time}</span>
+                  <span className="moment-rail">
+                    <i className={`moment-node ${moment.node}`.trim()} />
+                    <i className="moment-line" />
+                  </span>
+                  <div className="moment-card">
+                    <strong>{moment.text}</strong>
+                    {moment.actions ? (
+                      <div className="moment-actions">
+                        <span className="moment-action moment-action-primary"><Check size={11} /> Approve draft</span>
+                        <span className="moment-action">Edit first</span>
+                      </div>
+                    ) : (
+                      <span className={`moment-tag${moment.tag?.startsWith('Morning') ? ' moment-tag-lime' : ''}`}>{moment.tag}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* 5 — The work between the work */}
+      <section id="work-between-the-work" className="landing-section landing-capabilities-section">
+        <div className="landing-container">
+          <Reveal className="landing-section-intro">
+            <p className="landing-kicker">What Harvie does</p>
             <h2>Built for the work between the work.</h2>
-            <p>Harvie keeps the small commitments, decisions, and follow-ups moving so they don&apos;t disappear between tools and sessions.</p>
+            <p>The small commitments, decisions, and follow-ups that fall between emails, meetings, and projects — kept visible and moved along, so they don’t disappear between tools and sessions.</p>
           </Reveal>
           <div className="capability-grid">
             {capabilities.map((capability, index) => {
@@ -353,11 +695,13 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section id="proactive" className="landing-section landing-delegation-section">
+      {/* 6 — Delegation */}
+      <section id="delegate" className="landing-section landing-delegation-section">
         <div className="landing-container">
           <Reveal className="landing-section-intro landing-section-intro-narrow">
-            <h2>Don&apos;t just ask. Delegate.</h2>
-            <p>The goal isn&apos;t to spend more time talking to AI. Give Harvie an objective, then spend less time managing the work around it.</p>
+            <p className="landing-kicker">Delegation</p>
+            <h2>Don’t just ask. Delegate.</h2>
+            <p>Give Harvie the outcome, not the instructions. It works through the context it has, organizes the steps, prepares the result, and brings you the decisions that deserve your attention.</p>
           </Reveal>
           <Reveal className="delegation-board" delay={0.08}>
             <div className="delegation-column delegation-column-instructions">
@@ -368,7 +712,7 @@ export function LandingPage() {
             <div className="delegation-arrow" aria-hidden="true"><ArrowRight size={20} /></div>
             <div className="delegation-column delegation-column-objective">
               <span className="delegation-label">Tell Harvie</span>
-              <p>“Help me prepare for tomorrow.”</p>
+              <p>“<Typewriter text="Help me prepare for tomorrow." />”</p>
               <div className="delegation-objective-status"><Sparkles size={15} /><span>Objective understood</span><Check size={15} /></div>
             </div>
             <div className="delegation-result">
@@ -376,7 +720,9 @@ export function LandingPage() {
               <div className="delegation-result-steps">
                 <span><Check size={14} /> Checks your calendar</span>
                 <span><Check size={14} /> Finds the related conversation</span>
-                <span><CircleDot size={14} /> Prepares a focused brief</span>
+                <span><Check size={14} /> Drafts the updated brief</span>
+                <span className="is-gated"><CircleDot size={14} /> Adds the missing pricing <em className="delegation-step-gate">Needs your approval</em></span>
+                <span className="is-gated"><CircleDot size={14} /> Prepares the follow-up <em className="delegation-step-gate">Review before sending</em></span>
               </div>
               <button type="button" className="delegation-review-button">Review the plan <ArrowUpRight aria-hidden="true" size={15} /></button>
             </div>
@@ -384,33 +730,50 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* 7 — Memory & continuity */}
       <section id="memory" className="landing-section landing-memory-section">
         <div className="landing-container landing-memory-layout">
-          <Reveal className="memory-record" delay={0.05}>
-            <div className="memory-record-top"><span><StickyNote size={15} /> Example memory</span><span className="memory-record-menu">•••</span></div>
-            <h3>Keep the relationship in view.</h3>
-            <p className="memory-record-subtitle">Useful context stays connected across conversations.</p>
-            <div className="memory-record-items">
-              <div><span>Working preference</span><strong>Concise updates with a clear next step</strong></div>
-              <div><span>Open commitment</span><strong>Follow up after the proposal review</strong></div>
-              <div><span>Previous context</span><strong>The decision is waiting on one detail</strong></div>
-              <div><span>Next check-in</span><strong>Bring the unresolved question forward</strong></div>
-            </div>
-            <div className="memory-record-footer"><span className="memory-record-dot" /> Continues across sessions</div>
-          </Reveal>
           <Reveal className="landing-memory-copy">
-            <h2>It remembers the context you shouldn&apos;t have to repeat.</h2>
-            <p>Your work doesn&apos;t reset every morning. Neither should your assistant. Harvie can remember useful information about how you work, your ongoing tasks, important context, and previous interactions.</p>
+            <p className="landing-kicker">Memory &amp; continuity</p>
+            <h2>It remembers the context you shouldn’t have to repeat.</h2>
+            <p>Your work doesn’t reset every morning. Neither should your assistant. Preferences, decisions, commitments, open threads — Harvie carries them forward, so every session continues where the last one ended.</p>
             <p className="landing-highlight-line">No starting from zero.</p>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <div className="memory-thread" aria-hidden="true">
+              <div className="memory-thread-card">
+                <div className="memory-thread-card-head"><span>Tue · 16:40</span><span>Conversation</span></div>
+                <p>“We’ll wait for Rahul’s numbers before sending the proposal.”</p>
+                <div className="memory-thread-kept">
+                  <span><StickyNote size={11} /> Decision saved</span>
+                  <span><Clock3 size={11} /> Waiting on Rahul</span>
+                </div>
+              </div>
+              <div className="memory-thread-line">
+                <i />
+                <div className="memory-thread-chips">
+                  <span>Client · Acme</span>
+                  <span>Due · Friday</span>
+                  <span>Waiting · Rahul</span>
+                </div>
+                <i />
+              </div>
+              <div className="memory-thread-card">
+                <div className="memory-thread-card-head"><span>Fri · 09:12</span><span className="is-resumed">Resumed</span></div>
+                <p>“Picking up where you left off — the proposal is one decision away.”</p>
+              </div>
+            </div>
           </Reveal>
         </div>
       </section>
 
+      {/* 8 — Connected context */}
       <section id="tools" className="landing-section landing-tools-section">
         <div className="landing-container landing-tools-layout">
           <Reveal className="landing-tools-copy">
+            <p className="landing-kicker">Connected context</p>
             <h2>One assistant. The tools you already use.</h2>
-            <p>Instead of jumping between tools, give Harvie the objective and let it coordinate the work across your everyday workflow.</p>
+            <p>The context you need is scattered across Gmail, Google Calendar, and the tools you work in. Connect them once, and Harvie brings the relevant pieces together — when you allow it.</p>
             <div className="tool-connection-list">
               {toolConnections.map((tool) => {
                 const Icon = tool.icon;
@@ -418,112 +781,96 @@ export function LandingPage() {
               })}
             </div>
           </Reveal>
-          <Reveal className="tools-coordination-panel" delay={0.08}>
-            <div className="tools-panel-heading"><span className="tools-panel-kicker"><span /> Connected context</span><span>5 sources</span></div>
-            <div className="tools-panel-center"><span className="tools-panel-core"><Sparkles aria-hidden="true" size={20} /></span><span>Harvie</span></div>
-            <div className="tools-panel-lines" aria-hidden="true"><i /><i /><i /><i /><i /></div>
-            <div className="tools-panel-sources">
-              <span><Mail size={14} /> Inbox</span>
-              <span><CalendarDays size={14} /> Calendar</span>
-              <span><FileText size={14} /> Notes</span>
-              <span><CheckCircle2 size={14} /> Tasks</span>
-              <span><Globe2 size={14} /> APIs</span>
+          <Reveal delay={0.08}>
+            <div className="tools-coordination-panel" aria-hidden="true">
+              <div className="tools-panel-heading"><span className="tools-panel-kicker"><span /> Connected context</span><span>5 sources</span></div>
+              <div className="tools-panel-stage">
+                <div className="tools-panel-center"><span className="tools-panel-core"><Sparkles aria-hidden="true" size={20} /></span><span>Harvie</span></div>
+                <div className="tools-panel-lines"><i /><i /><i /><i /><i /></div>
+                <div className="tools-panel-sources">
+                  <span><Mail size={14} /> Inbox</span>
+                  <span><CalendarDays size={14} /> Calendar</span>
+                  <span><FileText size={14} /> Notes</span>
+                  <span><CheckCircle2 size={14} /> Tasks</span>
+                  <span><Globe2 size={14} /> APIs</span>
+                </div>
+              </div>
+              <div className="tools-panel-footer"><span>Objective</span><strong>Prepare this week</strong><ArrowRight aria-hidden="true" size={15} /></div>
             </div>
-            <div className="tools-panel-footer"><span>Objective</span><strong>Prepare this week</strong><ArrowRight aria-hidden="true" size={15} /></div>
           </Reveal>
         </div>
       </section>
 
-      <section id="privacy" className="landing-section landing-privacy-section">
-        <div className="landing-container landing-privacy-layout">
-          <Reveal className="landing-privacy-copy">
-            <div className="privacy-lock-mark"><LockKeyhole aria-hidden="true" size={18} /></div>
+      {/* 9 — Control */}
+      <section id="control" className="landing-section landing-control-section">
+        <div className="landing-container landing-control-layout">
+          <Reveal className="landing-control-copy">
+            <p className="landing-kicker">Control &amp; privacy</p>
             <h2>Your AI assistant. Your machine. Your data.</h2>
-            <p>Your personal assistant should feel personal. Harvie is built around giving you control over your data, your connections, and your AI environment.</p>
-            <p>Private by design. Your information isn&apos;t just another dataset for a generic chatbot.</p>
+            <p>You decide which tools Harvie can reach, which actions need your approval, which models it uses, and where it runs — hosted, on your machine, or self-hosted.</p>
+            <p>Helpful, not reckless. Harvie works for your benefit and stays under your control.</p>
           </Reveal>
-          <Reveal className="control-panel" delay={0.08}>
-            <div className="control-panel-heading"><ShieldCheck aria-hidden="true" size={18} /><span>Keep the control</span><span className="control-panel-state">Your rules</span></div>
-            <p>Harvie only becomes useful when it can work with your tools. Access should never mean giving up control.</p>
-            <ul>
-              <li><Check aria-hidden="true" size={15} /> What Harvie can access</li>
-              <li><Check aria-hidden="true" size={15} /> Which tools it can use</li>
-              <li><Check aria-hidden="true" size={15} /> What it can do and when it should act</li>
-              <li><Check aria-hidden="true" size={15} /> What stays private</li>
-            </ul>
-            <div className="control-panel-footer"><span className="control-panel-signal" /> You stay in control <ArrowRight aria-hidden="true" size={15} /></div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="landing-section landing-process-section">
-        <div className="landing-container">
-          <Reveal className="landing-section-intro landing-section-intro-narrow">
-            <h2>Tell Harvie what you need.</h2>
-            <p>Harvie understands the goal, uses the context it has access to, and keeps you informed about what happens next.</p>
-          </Reveal>
-          <div className="process-list">
-            <Reveal className="process-row" delay={0.02}>
-              <span className="process-number">01</span><div><h3>Tell it</h3><p>Give Harvie a goal, task, question, or problem.</p></div><span className="process-example">“Help me plan my week.”</span>
-            </Reveal>
-            <Reveal className="process-row" delay={0.07}>
-              <span className="process-number">02</span><div><h3>Harvie understands</h3><p>It uses your context, memory, and connected tools to understand what needs to happen.</p></div><span className="process-example">Context + memory</span>
-            </Reveal>
-            <Reveal className="process-row" delay={0.12}>
-              <span className="process-number">03</span><div><h3>Harvie acts</h3><p>It can research, organize, draft, coordinate, and perform actions through your connected tools.</p></div><span className="process-example">Research → organize → act</span>
-            </Reveal>
-            <Reveal className="process-row process-row-final" delay={0.17}>
-              <span className="process-number">04</span><div><h3>You stay in control</h3><p>Harvie keeps you informed and lets you decide what happens next.</p></div><span className="process-example">Review before action</span>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      <section id="use-cases" className="landing-section landing-use-cases-section">
-        <div className="landing-container">
-          <Reveal className="landing-section-intro">
-            <h2>Built for the work between the work.</h2>
-            <p>From a clear morning plan to the follow-up you almost forgot, Harvie helps keep the important things moving.</p>
-          </Reveal>
-          <div className="use-case-grid">
-            {useCases.map((useCase, index) => {
-              const Icon = useCase.icon;
-              return (
-                <Reveal key={useCase.title} className="use-case-item" delay={index * 0.035}>
-                  <span className="use-case-icon"><Icon aria-hidden="true" size={17} /></span>
-                  <div><h3>{useCase.title}</h3><p>{useCase.prompt}</p></div>
-                  <ArrowUpRight aria-hidden="true" className="use-case-arrow" size={16} />
-                </Reveal>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-section landing-difference-section">
-        <div className="landing-container landing-difference-layout">
-          <Reveal className="landing-difference-copy">
-            <h2>AI that knows more than your last message.</h2>
-            <p>Useful assistance isn&apos;t just about producing a good answer. It&apos;s about knowing what happens next.</p>
-          </Reveal>
-          <Reveal className="difference-compare" delay={0.08}>
-            <div className="difference-compare-row difference-compare-muted"><span>Traditional AI</span><strong>Ask <i>→</i> Answer <i>→</i> Forget</strong></div>
-            <div className="difference-compare-row difference-compare-active"><span>Harvie</span><strong>Understand <i>→</i> Remember <i>→</i> Act <i>→</i> Follow through</strong></div>
+          <Reveal delay={0.08}>
+            <div className="settings-panel" aria-hidden="true">
+              <div className="settings-row">
+                <div className="settings-row-head">
+                  <span className="settings-row-icon"><LockKeyhole size={14} /></span>
+                  <div><strong>Permissions</strong><small>Choose which tools Harvie can access</small></div>
+                </div>
+                <div className="settings-chips">
+                  <span className="settings-chip is-on"><Check size={11} /> Gmail</span>
+                  <span className="settings-chip is-on"><Check size={11} /> Google Calendar</span>
+                  <span className="settings-chip">Notes</span>
+                </div>
+              </div>
+              <div className="settings-row">
+                <div className="settings-row-head">
+                  <span className="settings-row-icon"><ShieldCheck size={14} /></span>
+                  <div><strong>Approvals</strong><small>Decide when Harvie checks with you first</small></div>
+                </div>
+                <div className="settings-approval">
+                  <span className="settings-toggle"><i /></span>
+                  <span>Ask before sending anything</span>
+                </div>
+              </div>
+              <div className="settings-row">
+                <div className="settings-row-head">
+                  <span className="settings-row-icon"><Sparkles size={14} /></span>
+                  <div><strong>Models</strong><small>Bring your own providers — Harvie picks per task</small></div>
+                </div>
+                <div className="settings-route">
+                  <div><b>Deep reasoning</b><span>your strongest model</span><ArrowRight size={12} /></div>
+                  <div><b>Quick tasks</b><span>a lighter, faster one</span><ArrowRight size={12} /></div>
+                </div>
+              </div>
+              <div className="settings-row">
+                <div className="settings-row-head">
+                  <span className="settings-row-icon"><Network size={14} /></span>
+                  <div><strong>Deployment</strong><small>Runs where you’re comfortable</small></div>
+                </div>
+                <div className="settings-segmented">
+                  <span className="is-active">Hosted</span>
+                  <span>Local</span>
+                  <span>Self-hosted</span>
+                </div>
+              </div>
+            </div>
           </Reveal>
         </div>
       </section>
 
+      {/* 10 — Closing invitation */}
       <section id="get-started" className="landing-final-section">
         <div className="landing-container landing-final-inner">
-          <Reveal className="landing-final-copy">
-            <p className="landing-final-kicker"><span className="landing-eyebrow-dot" /> A better way to work with AI</p>
-            <h2>Let your AI do more than answer.</h2>
-            <p>Give your work a memory. Give your tasks a follow-through. Give yourself an assistant.</p>
-            <div className="landing-final-action"><GetStartedButton /></div>
+          <Reveal>
+            <FinalOrb />
           </Reveal>
-          <Reveal className="landing-final-tagline" delay={0.08}>
-            <Sparkles aria-hidden="true" size={19} />
-            <span>Your AI assistant.<br />Your machine.<br />Your data.</span>
+          <Reveal className="landing-final-copy" delay={0.08}>
+            <p className="landing-final-kicker"><span className="landing-eyebrow-dot" /> The invitation</p>
+            <h2>You focus. Harvie thinks ahead.</h2>
+            <p>Stop remembering everything. Hand Harvie the follow-ups, the deadlines, and the details — and get back to the work only you can do.</p>
+            <div className="landing-final-action"><GetStartedButton /></div>
+            <p className="landing-final-tag">Your AI assistant · Your machine · Your data</p>
           </Reveal>
         </div>
       </section>
@@ -532,10 +879,10 @@ export function LandingPage() {
         <div className="landing-container landing-footer-inner">
           <Link href="/" className="landing-brand"><span className="landing-brand-mark" aria-hidden="true"><span /></span><span>harvie</span></Link>
           <div className="landing-footer-links">
-            <a href="#what-is-harvie">Product</a>
-            <a href="#use-cases">Use cases</a>
-            <a href="#privacy">Privacy</a>
-            <a href="#how-it-works">How it works</a>
+            <a href="#work-between-the-work">Product</a>
+            <a href="#loop">How it works</a>
+            <a href="#memory">Memory</a>
+            <a href="#control">Privacy</a>
           </div>
           <div className="landing-footer-end">
             <GetStartedButton compact />
