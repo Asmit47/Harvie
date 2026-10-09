@@ -6,23 +6,34 @@ import { Show, SignInButton, SignOutButton, SignUpButton } from '@clerk/nextjs';
 import {
   ArrowRight,
   ArrowUpRight,
+  BellRing,
   CalendarDays,
   Check,
   CheckCircle2,
   CircleDot,
   Clock3,
+  Cloud,
+  Code2,
   FileText,
+  FolderOpen,
   Globe2,
+  HardDrive,
   Layers3,
+  LayoutGrid,
+  ListChecks,
   LockKeyhole,
   Mail,
   Menu,
   MessageCircle,
+  MessageSquare,
   Network,
+  Plus,
   Send,
   ShieldCheck,
   Sparkles,
   StickyNote,
+  Table2,
+  Video,
   X,
 } from 'lucide-react';
 import {
@@ -35,6 +46,7 @@ import {
   useTransform,
 } from 'framer-motion';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { MemoryGraph } from './memory-graph';
 import { Nucleus } from './nucleus';
 
 const capabilities = [
@@ -72,45 +84,126 @@ const capabilities = [
   },
 ];
 
+const rollItems = [
+  'Plan your day',
+  'Track open loops',
+  'Remember commitments',
+  'Draft the follow-up',
+  'Prepare for meetings',
+  'Your data stays yours',
+  'Acts only with approval',
+  'Runs hosted, local, or self-hosted',
+];
+
 const toolConnections = [
+  { name: 'Email & calendar', note: 'Gmail · Google Calendar', icon: Mail },
+  { name: 'Chat, docs & projects', note: 'Slack · Notion · GitHub · and more', icon: Layers3 },
+  { name: '250+ work apps', note: 'Everything in your stack', icon: Globe2 },
+];
+
+const appRowOne = [
   { name: 'Gmail', icon: Mail },
   { name: 'Google Calendar', icon: CalendarDays },
-  { name: 'Work tools', icon: Layers3 },
-  { name: 'Your data', icon: FileText },
-  { name: 'APIs & services', icon: Globe2 },
+  { name: 'Slack', icon: MessageSquare },
+  { name: 'Notion', icon: FileText },
+  { name: 'GitHub', icon: Code2 },
+  { name: 'Linear', icon: Layers3 },
+  { name: 'Zoom', icon: Video },
+  { name: 'Google Drive', icon: HardDrive },
+];
+
+const appRowTwo = [
+  { name: 'Asana', icon: ListChecks },
+  { name: 'HubSpot', icon: Globe2 },
+  { name: 'Airtable', icon: Table2 },
+  { name: 'Discord', icon: MessageCircle },
+  { name: 'Trello', icon: LayoutGrid },
+  { name: 'Salesforce', icon: Cloud },
 ];
 
 const loopSteps = [
-  { node: 'Understand', label: 'Objective understood', kind: 'understand' },
-  { node: 'Remember', label: 'Saved to memory', kind: 'remember' },
-  { node: 'Anticipate', label: 'Surfaced at the right time', kind: 'anticipate' },
-  { node: 'Act', label: 'Working, with review points', kind: 'act' },
-  { node: 'Follow through', label: 'After the conversation ends', kind: 'follow' },
+  {
+    node: 'Understand',
+    label: 'OBJECTIVE UNDERSTOOD',
+    quote: 'Help me prepare for tomorrow.',
+    body: 'Harvie checks your calendar, finds the related emails, and identifies what needs to be ready before the meeting.',
+    items: [
+      { kicker: 'Calendar', text: 'Maya, 11:00 — proposal review' },
+      { kicker: 'Inbox', text: 'Maya requested the proposal on Tuesday' },
+      { kicker: 'Note', text: 'The pricing section is still unfinished' },
+    ],
+  },
+  {
+    node: 'Remember',
+    label: 'CONTEXT CARRIED FORWARD',
+    quote: "You don't have to explain it all again.",
+    body: 'Harvie brings forward the decisions, preferences, and unfinished work from earlier conversations.',
+    items: [
+      { kicker: 'Client', text: 'Acme — Maya is waiting for the proposal' },
+      { kicker: 'Decision', text: 'Hold pricing until Rahul sends the numbers' },
+      { kicker: 'Preference', text: 'Keep updates concise and lead with the decision' },
+    ],
+  },
+  {
+    node: 'Anticipate',
+    label: 'SPOTTED BEFORE THE MEETING',
+    quote: 'Something’s missing before tomorrow’s meeting.',
+    body: 'Harvie connects the missing numbers to tomorrow’s review and flags the outdated agenda before it becomes a problem.',
+    items: [
+      { kicker: 'Mismatch', text: 'The agenda references the old proposal' },
+      { kicker: 'Waiting on', text: "Rahul's pricing numbers" },
+      { kicker: 'Next step', text: 'Update the agenda when pricing is confirmed' },
+    ],
+  },
+  {
+    node: 'Act',
+    label: 'PREPARED, AWAITING YOUR APPROVAL',
+    quote: 'The brief is ready. One decision remains.',
+    body: 'Harvie prepares the updated brief and drafts the follow-up, leaving the pricing decision and external messages under your control.',
+    items: [
+      { kicker: 'Prepared', text: 'Updated brief based on the latest context' },
+      { kicker: 'Drafted', text: 'Follow-up to Rahul, ready for review' },
+      { kicker: 'Your decision', text: 'Final pricing approval required' },
+    ],
+  },
+  {
+    node: 'Follow through',
+    label: 'STILL TRACKED ON FRIDAY',
+    quote: 'You closed the chat. The work carried on.',
+    body: 'On Friday, Harvie still has the open items in view: the brief awaiting your review, Rahul’s unanswered follow-up, and the proposal deadline.',
+    items: [
+      { kicker: 'Awaiting you', text: 'Review and approve the brief' },
+      { kicker: 'Still open', text: "Rahul's pricing response" },
+      { kicker: 'Deadline', text: 'Maya’s proposal is due today' },
+    ],
+  },
 ] as const;
-
-type LoopKind = (typeof loopSteps)[number]['kind'];
 
 const moments = [
   {
     time: '07:30',
+    label: 'Planned',
     node: 'is-lime',
     text: 'Four priorities today. The pricing review is the one that can’t move.',
     tag: 'Morning planned around it',
   },
   {
     time: '10:14',
+    label: 'Noticed',
     node: 'is-lime',
     text: 'Tomorrow’s meeting moved to 11:00. The agenda still references the old deck.',
     tag: 'Mismatch caught early',
   },
   {
     time: '14:20',
+    label: 'Caught',
     node: 'is-warm',
     text: 'Still waiting on Rahul for the numbers. I can draft the follow-up.',
     actions: true,
   },
   {
     time: '18:15',
+    label: 'Wrapped',
     node: '',
     text: 'Wrapped for today. The proposal is drafted — one decision left for tomorrow.',
     tag: 'Nothing left overnight',
@@ -133,22 +226,33 @@ function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; 
   );
 }
 
-function GetStartedButton({ compact = false }: { compact?: boolean }) {
-  const className = compact
-    ? 'landing-button landing-button-primary landing-button-small'
-    : 'landing-button landing-button-primary';
+const pageLinks = [
+  { href: '#work-between-the-work', label: 'Product' },
+  { href: '#loop', label: 'How it works' },
+  { href: '#memory', label: 'Memory' },
+  { href: '#tools', label: 'Connections' },
+  { href: '#control', label: 'Privacy' },
+] as const;
 
+const navigationLinks = pageLinks.filter((link) => link.label !== 'Connections');
+
+const footerLinkGroups = [
+  { label: 'Explore', links: pageLinks.slice(0, 3) },
+  { label: 'Resources', links: pageLinks.slice(3) },
+];
+
+function GetStartedButton() {
   return (
     <>
       <Show when="signed-out">
         <SignUpButton forceRedirectUrl="/app">
-          <button type="button" className={className}>
+          <button type="button" className="landing-button landing-button-primary">
             Try Beta <ArrowUpRight aria-hidden="true" size={16} strokeWidth={1.8} />
           </button>
         </SignUpButton>
       </Show>
       <Show when="signed-in">
-        <Link href="/app" className={className}>
+        <Link href="/app" className="landing-button landing-button-primary">
           Open Harvie <ArrowUpRight aria-hidden="true" size={16} strokeWidth={1.8} />
         </Link>
       </Show>
@@ -237,56 +341,58 @@ function Typewriter({ text }: { text: string }) {
   );
 }
 
-function LoopVignette({ kind }: { kind: LoopKind }) {
-  if (kind === 'understand') {
-    return (
-      <>
-        <p className="loop-vignette-quote">“Help me prepare for tomorrow.”</p>
-        <div className="loop-vignette-chips">
-          <span><Check size={12} /> Calendar gathered</span>
-          <span><Check size={12} /> Inbox gathered</span>
-          <span><Check size={12} /> Notes gathered</span>
-        </div>
-      </>
-    );
-  }
+function RollingWord({ words }: { words: string[] }) {
+  const reduceMotion = useReducedMotion();
+  const [index, setIndex] = useState(0);
 
-  if (kind === 'remember') {
-    return (
-      <>
-        <p className="loop-vignette-note">The details that matter are kept for next time — not lost when the chat closes.</p>
-        <div className="loop-vignette-chips">
-          <span><StickyNote size={12} /> Client · Acme</span>
-          <span><Clock3 size={12} /> Due · Friday</span>
-          <span><StickyNote size={12} /> Waiting on · Rahul</span>
-        </div>
-      </>
-    );
-  }
+  useEffect(() => {
+    if (reduceMotion) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % words.length);
+    }, 2600);
+    return () => window.clearInterval(timer);
+  }, [reduceMotion, words.length]);
 
-  if (kind === 'anticipate') {
-    return (
-      <>
-        <p className="loop-vignette-note">“Tomorrow’s agenda still references the old pricing.”</p>
-        <span className="loop-vignette-tag">One heads-up, not a feed of noise</span>
-      </>
-    );
-  }
-
-  if (kind === 'act') {
-    return (
-      <div className="loop-vignette-list">
-        <span><Check size={13} /> Gathers the latest context</span>
-        <span><Check size={13} /> Drafts the updated brief</span>
-        <span className="is-gated"><CircleDot size={13} /> Final pricing decision <em>Needs your approval</em></span>
-      </div>
-    );
+  if (reduceMotion) {
+    return <span className="rolling-static">{words.join(' Your ')}</span>;
   }
 
   return (
+    <span className="rolling-word-wrap">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={index}
+          className="rolling-word"
+          initial={{ y: '72%', opacity: 0 }}
+          animate={{ y: '0%', opacity: 1 }}
+          exit={{ y: '-72%', opacity: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {words[index]}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
+function LoopVignette({ step, index }: { step: (typeof loopSteps)[number]; index: number }) {
+  return (
     <>
-      <p className="loop-vignette-note">“Recap drafted. Tuesday’s check-in is on the calendar.”</p>
-      <span className="loop-vignette-tag">Ready for your review</span>
+      <div className="loop-vignette-copy">
+        <span className="loop-vignette-label">{String(index + 1).padStart(2, '0')} · {step.label}</span>
+        <p className="loop-vignette-quote">“{step.quote}”</p>
+        <p className="loop-vignette-note">{step.body}</p>
+      </div>
+      <div className="loop-vignette-evidence">
+        {step.items.map((item) => (
+          <div key={item.kicker} className={item.kicker === 'Your decision' ? 'is-gated' : undefined}>
+            <small>{item.kicker}</small>
+            <strong>{item.text}</strong>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
@@ -308,10 +414,12 @@ function LoopRail() {
   if (reduceMotion) {
     return (
       <div className="loop-static">
-        {loopSteps.map((step) => (
-          <div key={step.kind} className="loop-static-row">
+        {loopSteps.map((step, index) => (
+          <div key={step.node} className="loop-static-row">
             <strong>{step.node}</strong>
-            <LoopVignette kind={step.kind} />
+            <div className="loop-vignette">
+              <LoopVignette step={step} index={index} />
+            </div>
           </div>
         ))}
       </div>
@@ -327,7 +435,7 @@ function LoopRail() {
           <motion.i className="loop-pulse" style={{ left: pulseLeft }} aria-hidden="true" />
           {loopSteps.map((step, index) => (
             <div
-              key={step.kind}
+              key={step.node}
               className={`loop-node${index < active ? ' is-past' : ''}${index === active ? ' is-active' : ''}`}
             >
               <span className="loop-node-dot"><i /></span>
@@ -336,6 +444,7 @@ function LoopRail() {
           ))}
         </div>
         <div className="loop-vignette-stage">
+          <p className="loop-scene">One thread · tomorrow’s review with Maya</p>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={active}
@@ -345,8 +454,7 @@ function LoopRail() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
             >
-              <span className="loop-vignette-label">{loopSteps[active].label}</span>
-              <LoopVignette kind={loopSteps[active].kind} />
+              <LoopVignette step={loopSteps[active]} index={active} />
             </motion.div>
           </AnimatePresence>
         </div>
@@ -433,33 +541,39 @@ function CapabilityPreview({ type }: { type: string }) {
 
   return (
     <div className="capability-preview capability-preview-memory" aria-hidden="true">
-      <span>project / Harbor</span>
+      <div className="preview-memory-heading"><FolderOpen size={14} strokeWidth={1.8} /><span>Project / Harbor</span></div>
       <div className="preview-memory-graph">
-        <span className="preview-memory-node preview-memory-node-main">Context</span>
-        <span className="preview-memory-node preview-memory-node-one">Preference</span>
-        <span className="preview-memory-node preview-memory-node-two">Decision</span>
-        <span className="preview-memory-node preview-memory-node-three">Next step</span>
-        <motion.i
-          className="preview-memory-link preview-memory-link-one"
-          initial={reduceMotion ? false : { scaleX: 0, rotate: 22 }}
-          whileInView={reduceMotion ? undefined : { scaleX: 1, rotate: 22 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        />
-        <motion.i
-          className="preview-memory-link preview-memory-link-two"
-          initial={reduceMotion ? false : { scaleX: 0, rotate: -21 }}
-          whileInView={reduceMotion ? undefined : { scaleX: 1, rotate: -21 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        />
-        <motion.i
-          className="preview-memory-link preview-memory-link-three"
-          initial={reduceMotion ? false : { scaleX: 0, rotate: 27 }}
-          whileInView={reduceMotion ? undefined : { scaleX: 1, rotate: 27 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        />
+        <svg className="preview-memory-connectors" viewBox="0 0 1000 300" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <marker id="memory-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M1 1 L6 4 L1 7" />
+            </marker>
+          </defs>
+          <path className="preview-memory-path" d="M230 150 C260 150 295 150 325 150" markerEnd="url(#memory-arrow)" />
+          <path className="preview-memory-path" d="M620 150 C660 150 675 83 715 83" markerEnd="url(#memory-arrow)" />
+          <path className="preview-memory-path" d="M620 150 C660 150 675 217 715 217" markerEnd="url(#memory-arrow)" />
+          <circle className="preview-memory-path-dot" cx="278" cy="150" r="3" />
+          <circle className="preview-memory-path-dot" cx="670" cy="117" r="3" />
+          <circle className="preview-memory-path-dot" cx="670" cy="183" r="3" />
+        </svg>
+        <div className="preview-memory-node preview-memory-node-one">
+          <span className="preview-memory-node-icon"><FileText size={15} /></span>
+          <span className="preview-memory-node-copy"><strong>Preference</strong><small>Concise updates</small></span>
+        </div>
+        <div className="preview-memory-node preview-memory-node-main">
+          <span className="preview-memory-node-icon"><Layers3 size={17} /></span>
+          <span className="preview-memory-node-copy"><strong>Project context</strong><small>All your work in one place</small></span>
+        </div>
+        <div className="preview-memory-node-group">
+          <div className="preview-memory-node preview-memory-node-two">
+            <span className="preview-memory-node-icon"><CheckCircle2 size={15} /></span>
+            <span className="preview-memory-node-copy"><strong>Decision</strong><small>Use the new pricing</small></span>
+          </div>
+          <div className="preview-memory-node preview-memory-node-three">
+            <span className="preview-memory-node-icon"><Send size={15} /></span>
+            <span className="preview-memory-node-copy"><strong>Next step</strong><small>Follow up with Rahul</small></span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -494,9 +608,9 @@ export function LandingPage() {
             <Image src="/harvie-logo.svg" alt="" width={20} height={28} priority />
           </Link>
           <div className="landing-nav-links">
-            <a href="#work-between-the-work">Product</a>
-            <a href="#loop">How it works</a>
-            <a href="#control">Privacy</a>
+            {navigationLinks.map((link) => (
+              <a key={link.href} href={link.href}>{link.label}</a>
+            ))}
           </div>
 
           <div className="landing-nav-actions">
@@ -514,9 +628,9 @@ export function LandingPage() {
           </button>
         </div>
         <div className={`landing-mobile-menu ${menuOpen ? 'landing-mobile-menu-open' : ''}`}>
-          <a href="#work-between-the-work" onClick={closeMenu}>Product <ArrowUpRight aria-hidden="true" size={16} /></a>
-          <a href="#loop" onClick={closeMenu}>How it works <ArrowUpRight aria-hidden="true" size={16} /></a>
-          <a href="#control" onClick={closeMenu}>Privacy <ArrowUpRight aria-hidden="true" size={16} /></a>
+          {navigationLinks.map((link) => (
+            <a key={link.href} href={link.href} onClick={closeMenu}>{link.label} <ArrowUpRight aria-hidden="true" size={16} /></a>
+          ))}
           <div className="landing-mobile-actions">
             <LandingAuthButton />
           </div>
@@ -542,22 +656,32 @@ export function LandingPage() {
         <div className="landing-hero-visual">
           <HeroOrb />
           <Reveal className="hero-moment-wrap" delay={0.45}>
-            <div className="hero-moment" aria-hidden="true">
-              <div className="hero-moment-head">
-                <span className="hero-moment-source"><Mail size={12} /> Inbox · Calendar</span>
-                <span>9:02</span>
+            <div className="noticed-card" aria-hidden="true">
+              <div className="noticed-head">
+                <span className="noticed-label"><BellRing size={13} /> Noticed</span>
+                <span className="noticed-time">2m ago</span>
               </div>
-              <p>The client moved tomorrow’s review to 11:00. The proposal is still missing pricing — want me to flag it?</p>
-              <div className="hero-moment-actions">
-                <span className="is-approve"><Check size={11} /> Yes, flag it</span>
-                <span>Later</span>
+              <p className="noticed-title">The client moved tomorrow’s review to 11:00.</p>
+              <p className="noticed-body">The proposal is still missing pricing. I can add a note and remind you before the meeting.</p>
+              <div className="noticed-actions">
+                <span className="noticed-action-primary"><Check size={12} /> Flag it for me</span>
+                <span className="noticed-action-ghost">Later</span>
               </div>
             </div>
           </Reveal>
-          <span className="hero-chip hero-chip-mail" aria-hidden="true"><Mail size={12} /> Email</span>
-          <span className="hero-chip hero-chip-task" aria-hidden="true"><CheckCircle2 size={12} /> Tasks</span>
-          <i className="hero-trail hero-trail-one" aria-hidden="true" />
-          <i className="hero-trail hero-trail-three" aria-hidden="true" />
+        </div>
+      </section>
+
+      {/* Rolling strip */}
+      <section className="roll-strip" aria-hidden="true">
+        <div className="roll-track">
+          {[0, 1].map((copy) => (
+            <div className="roll-group" key={copy}>
+              {rollItems.map((item) => (
+                <span className="roll-item" key={`${copy}-${item}`}>{item}</span>
+              ))}
+            </div>
+          ))}
         </div>
       </section>
 
@@ -566,39 +690,26 @@ export function LandingPage() {
         <div className="landing-container landing-problem-layout">
           <Reveal className="landing-problem-copy">
             <p className="landing-kicker">The problem</p>
-            <h2>Your work doesn’t live in one place. Your agent only sees one.</h2>
-            <p>A deadline buried in an email. A promise made in a conversation. A number you’re still waiting on. The work between the work is scattered across tools, threads, and days — and it’s usually the work that matters most.</p>
-            <p>Most AI sees the message in front of it. When the conversation ends, everything you explained leaves with it.</p>
+            <h2>The conversation ends. The work doesn’t.</h2>
+            <p>A deadline buried in an email. A promise made in a chat. A number you’re still waiting on. The work between the work is scattered across tools, threads, and days.</p>
+            <p>Most AI sees the message in front of it — then forgets everything when the chat closes.</p>
           </Reveal>
           <Reveal className="scatter-board" delay={0.08}>
-            <div className="scatter-field" aria-hidden="true">
-              <div className="scatter-fragment scatter-fragment-mail">
-                <span className="scatter-fragment-head"><Mail size={13} /></span>
+            <div className="scatter-grid" aria-hidden="true">
+              <div className="scatter-fragment">
+                <span className="scatter-fragment-head"><Mail size={13} /> Email</span>
                 <div><strong>Forward the updated proposal</strong><small>Maya · Tue 17:42</small></div>
               </div>
-              <div className="scatter-fragment scatter-fragment-cal">
-                <span className="scatter-fragment-head"><CalendarDays size={13} /></span>
-                <div><strong>Client review — moved to 11:00</strong><small>Friday</small></div>
-              </div>
-              <div className="scatter-fragment scatter-fragment-chat">
-                <span className="scatter-fragment-head"><MessageCircle size={13} /></span>
+              <div className="scatter-fragment">
+                <span className="scatter-fragment-head"><MessageCircle size={13} /> Chat</span>
                 <div><strong>“Can you send the numbers today?”</strong><small>Rahul · thread</small></div>
               </div>
-              <div className="scatter-fragment scatter-fragment-note">
-                <span className="scatter-fragment-head"><StickyNote size={13} /></span>
+              <div className="scatter-fragment">
+                <span className="scatter-fragment-head"><StickyNote size={13} /> Note</span>
                 <div><strong>Pricing section — TBD</strong><small>Half-written note</small></div>
               </div>
-              <div className="scatter-fragment scatter-fragment-task">
-                <span className="scatter-fragment-head"><CheckCircle2 size={13} /></span>
-                <div><strong>Follow up after the review</strong><small>No due date</small></div>
-              </div>
             </div>
-            <div className="scatter-thread" aria-hidden="true">Harvie holds the thread</div>
-            <div className="scatter-transcript" aria-hidden="true">
-              <div className="scatter-transcript-line is-old"><span>You</span><p>Here’s all the context on the Acme proposal…</p></div>
-              <div className="scatter-transcript-line"><span>Assistant</span><p>Got it — here’s a summary.</p></div>
-              <div className="scatter-transcript-end"><span>Ask</span><i>→</i><span>Answer</span><i>→</i><span>Forget</span></div>
-            </div>
+            <div className="scatter-end" aria-hidden="true"><span>Ask</span><i>→</i><span>Answer</span><i>→</i><span>Forget</span></div>
           </Reveal>
         </div>
       </section>
@@ -608,8 +719,8 @@ export function LandingPage() {
         <div className="landing-container">
           <Reveal className="landing-section-intro">
             <p className="landing-kicker">What makes Harvie different</p>
-            <h2>Most AI waits to be asked. Harvie works in a loop.</h2>
-            <p>Harvie isn’t organized around conversations. It’s organized around your work — building context, carrying it forward, watching for what needs attention, and keeping commitments moving after the conversation ends.</p>
+            <h2>Harvie works in a loop.</h2>
+            <p>Most AI waits to be asked. Harvie builds context, carries it forward, watches for what needs attention, and keeps commitments moving after the conversation ends.</p>
           </Reveal>
           <Reveal className="loop-compare" delay={0.05}>
             <div className="difference-compare-row difference-compare-muted">
@@ -630,9 +741,9 @@ export function LandingPage() {
         <div className="landing-container landing-moments-layout">
           <Reveal className="landing-moments-copy">
             <p className="landing-kicker">One step ahead</p>
-            <h2>The right thing, at the right time. Not a feed of noise.</h2>
-            <p>Harvie speaks up when something actually needs you — a missing piece before a meeting, a commitment you made last week, a number you’re still waiting on. And it stays quiet when everything is on track.</p>
-            <p className="landing-moments-foot"><span className="landing-eyebrow-dot" /> No pings for the sake of pinging. Harvie surfaces what matters.</p>
+            <h2>Harvie speaks up. Only when it matters.</h2>
+            <p>A missing detail before a meeting. A commitment you made last week. A reply you’re still waiting on. Harvie surfaces what needs your attention — and stays quiet when it doesn’t.</p>
+            <p className="landing-moments-foot"><span className="landing-eyebrow-dot" /> No pings for the sake of pinging.</p>
           </Reveal>
           <Reveal delay={0.08}>
             <div className="moments-day" aria-hidden="true">
@@ -648,6 +759,7 @@ export function LandingPage() {
                     <i className="moment-line" />
                   </span>
                   <div className="moment-card">
+                    <span className="moment-card-label"><BellRing size={12} /> {moment.label}</span>
                     <strong>{moment.text}</strong>
                     {moment.actions ? (
                       <div className="moment-actions">
@@ -655,7 +767,7 @@ export function LandingPage() {
                         <span className="moment-action">Edit first</span>
                       </div>
                     ) : (
-                      <span className={`moment-tag${moment.tag?.startsWith('Morning') ? ' moment-tag-lime' : ''}`}>{moment.tag}</span>
+                      <span className="moment-tag">{moment.tag}</span>
                     )}
                   </div>
                 </div>
@@ -701,7 +813,7 @@ export function LandingPage() {
           <Reveal className="landing-section-intro landing-section-intro-narrow">
             <p className="landing-kicker">Delegation</p>
             <h2>Don’t just ask. Delegate.</h2>
-            <p>Give Harvie the outcome, not the instructions. It works through the context it has, organizes the steps, prepares the result, and brings you the decisions that deserve your attention.</p>
+            <p>Give Harvie the outcome. It brings together the context, works through the steps, and surfaces what needs your decision.</p>
           </Reveal>
           <Reveal className="delegation-board" delay={0.08}>
             <div className="delegation-column delegation-column-instructions">
@@ -730,39 +842,17 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* 7 — Memory & continuity */}
+      {/* 7 — Memory graph */}
       <section id="memory" className="landing-section landing-memory-section">
         <div className="landing-container landing-memory-layout">
           <Reveal className="landing-memory-copy">
             <p className="landing-kicker">Memory &amp; continuity</p>
-            <h2>It remembers the context you shouldn’t have to repeat.</h2>
-            <p>Your work doesn’t reset every morning. Neither should your assistant. Preferences, decisions, commitments, open threads — Harvie carries them forward, so every session continues where the last one ended.</p>
+            <h2>Remember once. Never repeat.</h2>
+            <p>Every conversation becomes a living memory graph — people, decisions, deadlines, and preferences, connected and carried forward. Come back days later, and Harvie still knows where things stand.</p>
             <p className="landing-highlight-line">No starting from zero.</p>
           </Reveal>
           <Reveal delay={0.08}>
-            <div className="memory-thread" aria-hidden="true">
-              <div className="memory-thread-card">
-                <div className="memory-thread-card-head"><span>Tue · 16:40</span><span>Conversation</span></div>
-                <p>“We’ll wait for Rahul’s numbers before sending the proposal.”</p>
-                <div className="memory-thread-kept">
-                  <span><StickyNote size={11} /> Decision saved</span>
-                  <span><Clock3 size={11} /> Waiting on Rahul</span>
-                </div>
-              </div>
-              <div className="memory-thread-line">
-                <i />
-                <div className="memory-thread-chips">
-                  <span>Client · Acme</span>
-                  <span>Due · Friday</span>
-                  <span>Waiting · Rahul</span>
-                </div>
-                <i />
-              </div>
-              <div className="memory-thread-card">
-                <div className="memory-thread-card-head"><span>Fri · 09:12</span><span className="is-resumed">Resumed</span></div>
-                <p>“Picking up where you left off — the proposal is one decision away.”</p>
-              </div>
-            </div>
+            <MemoryGraph />
           </Reveal>
         </div>
       </section>
@@ -772,27 +862,49 @@ export function LandingPage() {
         <div className="landing-container landing-tools-layout">
           <Reveal className="landing-tools-copy">
             <p className="landing-kicker">Connected context</p>
-            <h2>One assistant. The tools you already use.</h2>
-            <p>The context you need is scattered across Gmail, Google Calendar, and the tools you work in. Connect them once, and Harvie brings the relevant pieces together — when you allow it.</p>
+            <h2>One assistant. Every tool you use.</h2>
+            <p>Connect your email, calendar, chat, docs, and the rest of your stack. Harvie brings the relevant context together — with your permission.</p>
             <div className="tool-connection-list">
               {toolConnections.map((tool) => {
                 const Icon = tool.icon;
-                return <div key={tool.name}><span><Icon aria-hidden="true" size={16} /></span>{tool.name}<ArrowUpRight aria-hidden="true" size={14} /></div>;
+                return (
+                  <div key={tool.name}>
+                    <span className="tool-connection-icon"><Icon aria-hidden="true" size={16} /></span>
+                    <span className="tool-connection-copy"><strong>{tool.name}</strong><small>{tool.note}</small></span>
+                    <ArrowUpRight aria-hidden="true" size={14} />
+                  </div>
+                );
               })}
             </div>
           </Reveal>
           <Reveal delay={0.08}>
-            <div className="tools-coordination-panel" aria-hidden="true">
-              <div className="tools-panel-heading"><span className="tools-panel-kicker"><span /> Connected context</span><span>5 sources</span></div>
-              <div className="tools-panel-stage">
-                <div className="tools-panel-center"><span className="tools-panel-core"><Sparkles aria-hidden="true" size={20} /></span><span>Harvie</span></div>
-                <div className="tools-panel-lines"><i /><i /><i /><i /><i /></div>
-                <div className="tools-panel-sources">
-                  <span><Mail size={14} /> Inbox</span>
-                  <span><CalendarDays size={14} /> Calendar</span>
-                  <span><FileText size={14} /> Notes</span>
-                  <span><CheckCircle2 size={14} /> Tasks</span>
-                  <span><Globe2 size={14} /> APIs</span>
+            <div className="tools-marquee-panel" aria-hidden="true">
+              <div className="tools-panel-heading"><span className="tools-panel-kicker"><span /> Connected context</span><span>250+ apps</span></div>
+              <div className="tools-marquee-body">
+                <div className="tools-marquee-row">
+                  <div className="tools-marquee-track">
+                    {[0, 1].map((copy) => (
+                      <div className="tools-marquee-group" key={copy}>
+                        {appRowOne.map((app) => {
+                          const Icon = app.icon;
+                          return <span className="app-chip" key={`${copy}-${app.name}`}><Icon size={13} /> {app.name}</span>;
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="tools-marquee-row tools-marquee-row-reverse">
+                  <div className="tools-marquee-track tools-marquee-track-reverse">
+                    {[0, 1].map((copy) => (
+                      <div className="tools-marquee-group" key={copy}>
+                        {appRowTwo.map((app) => {
+                          const Icon = app.icon;
+                          return <span className="app-chip" key={`${copy}-${app.name}`}><Icon size={13} /> {app.name}</span>;
+                        })}
+                        <span className="app-chip app-chip-more"><Plus size={13} /> 250+ more</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="tools-panel-footer"><span>Objective</span><strong>Prepare this week</strong><ArrowRight aria-hidden="true" size={15} /></div>
@@ -806,9 +918,12 @@ export function LandingPage() {
         <div className="landing-container landing-control-layout">
           <Reveal className="landing-control-copy">
             <p className="landing-kicker">Control &amp; privacy</p>
-            <h2>Your AI assistant. Your machine. Your data.</h2>
-            <p>You decide which tools Harvie can reach, which actions need your approval, which models it uses, and where it runs — hosted, on your machine, or self-hosted.</p>
-            <p>Helpful, not reckless. Harvie works for your benefit and stays under your control.</p>
+            <p className="control-statement">
+              <span className="control-statement-fixed">Your</span>
+              <RollingWord words={['AI assistant.', 'machine.', 'data.']} />
+            </p>
+            <p>Choose what Harvie can access, which actions require your approval, which models it uses, and where it runs.</p>
+            <p>Helpful by design. Under your control.</p>
           </Reveal>
           <Reveal delay={0.08}>
             <div className="settings-panel" aria-hidden="true">
@@ -877,17 +992,22 @@ export function LandingPage() {
 
       <footer className="landing-footer">
         <div className="landing-container landing-footer-inner">
-          <Link href="/" className="landing-brand"><span className="landing-brand-mark" aria-hidden="true"><span /></span><span>harvie</span></Link>
-          <div className="landing-footer-links">
-            <a href="#work-between-the-work">Product</a>
-            <a href="#loop">How it works</a>
-            <a href="#memory">Memory</a>
-            <a href="#control">Privacy</a>
+          <div className="landing-footer-brand">
+            <Link href="/" className="landing-footer-wordmark" aria-label="Harvie home">harvie</Link>
+            <p>Remembers what matters. Thinks ahead.</p>
           </div>
-          <div className="landing-footer-end">
-            <GetStartedButton compact />
-            <span>© {new Date().getFullYear()} Harvie</span>
-          </div>
+          <nav className="landing-footer-links" aria-label="Footer">
+            {footerLinkGroups.map((group) => (
+              <div className="landing-footer-link-group" key={group.label}>
+                <h2>{group.label}</h2>
+                {group.links.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}
+              </div>
+            ))}
+          </nav>
+        </div>
+        <div className="landing-container landing-footer-bar">
+          <span>© {new Date().getFullYear()} Harvie</span>
+          <span>Built for follow-through.</span>
         </div>
       </footer>
     </main>

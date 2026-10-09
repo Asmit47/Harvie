@@ -8,9 +8,5 @@ export default async function HarvieAppPage() {
     return redirectToSignIn();
   }
 
-  return (
-    <div className="alcor-app-shell">
-      <HarvieDashboard key={userId} userId={userId} />
-    </div>
-  );
+  return <HarvieDashboard key={userId} userId={userId} />;
 }
