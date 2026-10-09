@@ -18,6 +18,7 @@ from langsmith import traceable
 
 from harvie.core.config import settings
 from harvie.core.identity import get_request_user_id
+from harvie.integrations.catalog import cli_name, session_tools
 
 logger = logging.getLogger(__name__)
 
@@ -124,25 +125,9 @@ class ComposioSessionManager:
         try:
             session = composio.sessions.create(
                 user_id=uid,
-                toolkits=["gmail", "googlecalendar"],
-                tools={
-                    "gmail": [
-                        "GMAIL_SEND_EMAIL",
-                        "GMAIL_CREATE_EMAIL_DRAFT",
-                        "GMAIL_REPLY_TO_THREAD",
-                        "GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID",
-                        "GMAIL_FETCH_EMAILS",
-                        "GMAIL_ADD_LABEL_TO_EMAIL",
-                    ],
-                    "googlecalendar": [
-                        "GOOGLECALENDAR_EVENTS_LIST",
-                        "GOOGLECALENDAR_EVENTS_GET",
-                        "GOOGLECALENDAR_CREATE_EVENT",
-                        "GOOGLECALENDAR_PATCH_EVENT",
-                        "GOOGLECALENDAR_DELETE_EVENT",
-                        "GOOGLECALENDAR_FIND_EVENT",
-                    ],
-                },
+                # No toolkit filter: any directory app can be connected. The
+                # allowlist below only narrows Harvie's curated connectors.
+                tools=session_tools(),
                 manage_connections=True,
                 sandbox={"enable": False},
                 preload={"tools": "all"},
@@ -179,6 +164,52 @@ class ComposioSessionManager:
             if connection and is_active:
                 return True
         return False
+
+    def connected_toolkits(self, user_id: str | None = None) -> list[str]:
+        """Slugs of every app this user has an active connection for."""
+        session = self.get_session(user_id)
+        slugs: list[str] = []
+        cursor: str | None = None
+        try:
+            for _ in range(20):
+                params: dict[str, Any] = {"is_connected": True}
+                if cursor:
+                    params["next_cursor"] = cursor
+                page = session.toolkits(**params)
+                for item in getattr(page, "items", []):
+                    connection = getattr(item, "connection", None)
+                    if getattr(item, "is_no_auth", False) or (connection and getattr(connection, "is_active", None)):
+                        slugs.append(item.slug)
+                cursor = getattr(page, "next_cursor", None)
+                if not cursor:
+                    break
+        except Exception as exc:
+            raise self._map_exception(exc) from exc
+        return slugs
+
+    def find_tools(self, toolkit: str, query: str, limit: int = 8) -> list[dict[str, Any]]:
+        """Search one app's actions and return compact schemas for the model."""
+        composio = self.initialize()
+        try:
+            raw = composio.tools.get_raw_composio_tools(
+                toolkits=[toolkit], search=query, limit=limit,
+            )
+        except Exception as exc:
+            raise self._map_exception(exc) from exc
+        found = []
+        for tool in raw:
+            schema = getattr(tool, "input_parameters", None) or {}
+            properties = schema.get("properties", {}) if isinstance(schema, dict) else {}
+            found.append({
+                "slug": tool.slug,
+                "description": (getattr(tool, "description", "") or "")[:240],
+                "required": list(schema.get("required", [])) if isinstance(schema, dict) else [],
+                "parameters": {
+                    name: (spec.get("type", "any") if isinstance(spec, dict) else "any")
+                    for name, spec in list(properties.items())[:15]
+                },
+            })
+        return found
 
     def _authorize_raw(self, toolkit: str, user_id: str | None = None) -> Any:
         """Create an authorization request and return the raw ConnectionRequest."""
@@ -272,8 +303,7 @@ class ComposioSessionManager:
         }
         if isinstance(exc, ConnectionRequiredError) and exc.auth_url:
             payload["error"]["authorization_url"] = exc.auth_url
-            command_target = "calendar" if toolkit == "googlecalendar" else toolkit
-            payload["error"]["command"] = f"python -m harvie auth {command_target}"
+            payload["error"]["command"] = f"python -m harvie auth {cli_name(toolkit)}"
         return json.dumps(payload, indent=2, ensure_ascii=False)
 
     def validate_environment(self) -> None:
@@ -395,3 +425,15 @@ class ComposioSessionManager:
 
 
 session_manager = ComposioSessionManager()
+
+
+def run_action(toolkit: str, tool_slug: str, arguments: dict[str, Any] | None = None) -> str:
+    """Execute one allowlisted Composio action and return text or a structured error."""
+    payload = {key: value for key, value in (arguments or {}).items() if value is not None}
+    try:
+        return session_manager.execute(toolkit, tool_slug, payload)
+    except IntegrationError as exc:
+        return session_manager.structured_error(exc, toolkit)
+    except Exception as exc:
+        logger.exception("integration action failed toolkit=%s tool=%s", toolkit, tool_slug)
+        return f"Error calling {tool_slug}: {exc}"

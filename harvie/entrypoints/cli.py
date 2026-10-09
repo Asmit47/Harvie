@@ -6,6 +6,7 @@ from langsmith import traceable
 
 from harvie.core.graph import compiled_graph
 from harvie.core.llm import fallback_llm
+from harvie.integrations.catalog import CONNECTORS, auth_toolkit_name, cli_name
 from harvie.integrations.composio.session import IntegrationError, session_manager
 from harvie.memory.tier2_session import generate_session_id, get_thread_config
 from harvie.memory.tier3_knowledge import knowledge_base
@@ -64,19 +65,11 @@ def close_session(session_id: str | None = None) -> str | None:
     return summary
 
 
-AUTH_TOOLKITS = {
-    "gmail": "gmail",
-    "calendar": "googlecalendar",
-    "google_calendar": "googlecalendar",
-    "googlecalendar": "googlecalendar",
-}
-
-
 def auth_toolkit(name: str) -> int:
-    """Print an authorization URL for a Google Workspace toolkit."""
-    toolkit = AUTH_TOOLKITS.get(name)
+    """Print an authorization URL for a Composio toolkit."""
+    toolkit = auth_toolkit_name(name)
     if not toolkit:
-        valid = ", ".join(sorted(AUTH_TOOLKITS))
+        valid = ", ".join(cli_name(slug) for slug in CONNECTORS)
         print(f"Unknown auth target: {name}. Use one of: {valid}.")
         return 2
 
@@ -115,7 +108,7 @@ def main(argv: list[str] | None = None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["auth"]:
         if len(argv) != 2:
-            print("Usage: python -m harvie auth gmail|calendar")
+            print("Usage: python -m harvie auth " + "|".join(cli_name(slug) for slug in CONNECTORS))
             raise SystemExit(2)
         raise SystemExit(auth_toolkit(argv[1]))
 

@@ -45,13 +45,18 @@ Set `DATABASE_URL` in `.env` to the PostgreSQL database created above:
 DATABASE_URL=postgresql://localhost:5432/harvie
 ```
 
-Gmail and Google Calendar tools use Composio direct tool execution. Set
-`COMPOSIO_API_KEY`; production connections are scoped to the authenticated Clerk
-user ID. `COMPOSIO_USER_ID` is only an optional local CLI fallback.
+Gmail, Google Calendar, Google Docs, Google Drive, Google Tasks, Slack, and
+read-only Stripe tools use Composio. Set `COMPOSIO_API_KEY`; production
+connections are scoped to the authenticated Clerk user ID. `COMPOSIO_USER_ID`
+is only an optional local CLI fallback.
 
 Each authenticated account has its own persona profile in PostgreSQL. New
 accounts open directly in the dashboard: Harvie messages first, asks for a name,
-and offers Gmail and Calendar connection cards inside the conversation. Welcome
+and offers Gmail and Calendar connection cards inside the conversation. The
+Connections view lists 580+ Composio apps with search, Popular, Connected, and
+category sections. Docs, Drive, Tasks, Slack, and Stripe have dedicated tools;
+other connected apps are reached through generic find-then-run tools. The app
+directory is cached for a day under `COMPOSIO_CACHE_DIR`. Welcome
 replies are scripted; unrelated questions and
 tasks use the normal LLM/tool flow. Progress, suggestions, and cards survive reloads
 in the user's welcome thread. Other
@@ -64,6 +69,11 @@ Authorize Google integrations from the CLI:
 ```bash
 python -m harvie auth gmail
 python -m harvie auth calendar
+python -m harvie auth docs
+python -m harvie auth drive
+python -m harvie auth tasks
+python -m harvie auth slack
+python -m harvie auth stripe
 ```
 
 ## Run The API

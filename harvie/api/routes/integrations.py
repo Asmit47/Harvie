@@ -4,8 +4,8 @@ from typing import List
 
 from harvie.core.config import settings
 from harvie.integrations.catalog import CONNECTORS, Toolkit
+from harvie.integrations.composio.directory import get_directory, known_toolkit, toolkit_label
 from harvie.integrations.composio.session import IntegrationError, session_manager
-from harvie.memory.tier3_knowledge import knowledge_base
 
 router = APIRouter()
 
@@ -18,6 +18,8 @@ class IntegrationDTO(BaseModel):
     icon: str
     description: str
     toolkit: Toolkit | None = None
+    category: str | None = None
+    category_label: str | None = None
 
 
 class IntegrationsResponse(BaseModel):
@@ -25,10 +27,39 @@ class IntegrationsResponse(BaseModel):
 
 
 class ConnectRequest(BaseModel):
-    toolkit: Toolkit
+    toolkit: str
 
 
-def _connection_status(toolkit: Toolkit) -> str:
+class DirectoryApp(BaseModel):
+    slug: str
+    name: str
+    description: str
+    category: str
+    category_label: str
+
+
+class DirectoryCategory(BaseModel):
+    id: str
+    label: str
+    count: int
+
+
+class DirectoryResponse(BaseModel):
+    apps: List[DirectoryApp]
+    categories: List[DirectoryCategory]
+    popular: List[str]
+
+
+class ConnectedResponse(BaseModel):
+    toolkits: List[str]
+
+
+def _require_known(toolkit: str) -> None:
+    if not known_toolkit(toolkit):
+        raise HTTPException(status_code=422, detail="That app isn't available to connect.")
+
+
+def _connection_status(toolkit: str) -> str:
     if not settings.COMPOSIO_API_KEY:
         return "idle"
     try:
@@ -39,47 +70,43 @@ def _connection_status(toolkit: Toolkit) -> str:
 
 @router.get("/integrations", response_model=IntegrationsResponse)
 def get_integrations() -> IntegrationsResponse:
-    integrations: List[IntegrationDTO] = [
+    integrations = [
         IntegrationDTO(
-            id="int-1",
-            name="Google Calendar MCP",
-            type="MCP",
-            status=_connection_status("googlecalendar"),
-            icon="📅",
-            description="Fetches events & schedules time blocks automatically.",
-            toolkit="googlecalendar",
-        ),
-        IntegrationDTO(
-            id="int-2",
-            name="Gmail MCP Tool",
-            type="MCP",
-            status=_connection_status("gmail"),
-            icon="✉️",
-            description="Drafts emails & summarizes priority threads.",
-            toolkit="gmail",
-        ),
-        IntegrationDTO(
-            id="int-3",
-            name="Supermemory Knowledge Base",
+            id=slug,
+            name=meta["label"],
             type="Tool",
-            status="connected" if knowledge_base.enabled else "idle",
-            icon="🧠",
-            description="Long-term semantic memory storage for agent state.",
-        ),
-        IntegrationDTO(
-            id="int-4",
-            name="Composio Tooling Engine",
-            type="API",
-            status="connected" if settings.COMPOSIO_API_KEY else "idle",
-            icon="🔧",
-            description="Provides OAuth integrations and workspace tool execution.",
-        ),
+            status=_connection_status(slug),
+            icon=slug,
+            description=meta["description"],
+            toolkit=slug,
+            category=meta["category"],
+            category_label=meta["category_label"],
+        )
+        for slug, meta in CONNECTORS.items()
     ]
     return IntegrationsResponse(integrations=integrations)
 
 
+@router.get("/integrations/directory", response_model=DirectoryResponse)
+def integration_directory() -> dict:
+    """Every connectable app, grouped for the Connections page."""
+    return get_directory()
+
+
+@router.get("/integrations/connected", response_model=ConnectedResponse)
+def connected_integrations() -> dict:
+    """Apps the signed-in user has already connected."""
+    if not settings.COMPOSIO_API_KEY:
+        return {"toolkits": []}
+    try:
+        return {"toolkits": session_manager.connected_toolkits()}
+    except IntegrationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @router.get("/integrations/{toolkit}/status")
-def integration_status(toolkit: Toolkit) -> dict:
+def integration_status(toolkit: str) -> dict:
+    _require_known(toolkit)
     try:
         connected = session_manager.is_connected(toolkit)
     except IntegrationError as exc:
@@ -89,10 +116,11 @@ def integration_status(toolkit: Toolkit) -> dict:
 
 @router.post("/integrations/connect")
 def connect_integration(request: ConnectRequest) -> dict:
+    _require_known(request.toolkit)
     try:
         flow = session_manager.start_authentication(request.toolkit)
     except IntegrationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     if not flow.connected and not flow.authorization_url:
-        raise HTTPException(status_code=503, detail=f"Could not create an authorization link for {CONNECTORS[request.toolkit]['label']}.")
+        raise HTTPException(status_code=503, detail=f"Could not create an authorization link for {toolkit_label(request.toolkit)}.")
     return {"connected": flow.connected, "authorization_url": flow.authorization_url}

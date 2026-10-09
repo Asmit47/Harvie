@@ -118,12 +118,13 @@ export function HarvieDashboard({ userId }: { userId: string }) {
   return (
     <main className="harvie-workspace">
       <HarvieSidebar
-        onNewChat={() => { void createNewChat(); }}
-        onConnectionsClick={() => setShowConnections(true)}
+        activeView={showFollowups ? 'followups' : showConnections ? 'connections' : 'chat'}
+        onNewChat={() => { if (showConnections) { setShowConnections(false); return; } void createNewChat(); }}
+        onConnectionsClick={() => { setShowFollowups(false); setShowConnections(true); }}
         onFollowupsClick={() => setShowFollowups(true)}
       />
-      {showConnections && <ConnectionsPanel userId={userId} onClose={() => setShowConnections(false)} />}
       {showFollowups && <FollowupsPanel userId={userId} onClose={() => setShowFollowups(false)} />}
+      {showConnections ? <ConnectionsPanel userId={userId} onClose={() => setShowConnections(false)} /> : <>
       <ConversationPanel
         userId={userId}
         session={session}
@@ -148,6 +149,7 @@ export function HarvieDashboard({ userId }: { userId: string }) {
         onSend={sendMessage}
         placeholder={placeholder}
       />
+      </>}
     </main>
   );
 }

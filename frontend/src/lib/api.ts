@@ -1,5 +1,5 @@
 import { FloatingCardItem, Integration, MemoryEntry } from '../types/harvie';
-export type { MemoryEntry };
+export type { Integration, MemoryEntry };
 
 // Requests stay same-origin so Clerk identity is attached by the server-side proxy.
 const API_BASE_URL = '/api/harvie';
@@ -15,7 +15,34 @@ export interface ChatApiResponse {
   response_source: 'onboarding' | 'llm' | 'system';
 }
 
-export type Toolkit = 'gmail' | 'googlecalendar';
+export type Toolkit =
+  | 'gmail'
+  | 'googlecalendar'
+  | 'googledocs'
+  | 'googledrive'
+  | 'googletasks'
+  | 'slack'
+  | 'stripe';
+export interface DirectoryApp {
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  category_label: string;
+}
+
+export interface DirectoryCategory {
+  id: string;
+  label: string;
+  count: number;
+}
+
+export interface DirectoryResponse {
+  apps: DirectoryApp[];
+  categories: DirectoryCategory[];
+  popular: string[];
+}
+
 export type OnboardingStage = 'name' | 'connections' | 'complete';
 
 export interface ConnectionCardData {
@@ -284,7 +311,17 @@ export const api = {
     return res.json();
   },
 
-  async getIntegrationStatus(toolkit: Toolkit): Promise<{ toolkit: Toolkit; connected: boolean }> {
+  async getDirectory(): Promise<DirectoryResponse> {
+    const res = await fetch(`${API_BASE_URL}/integrations/directory`);
+    return readResponse(res, 'Could not load apps');
+  },
+
+  async getConnectedApps(): Promise<{ toolkits: string[] }> {
+    const res = await fetch(`${API_BASE_URL}/integrations/connected`);
+    return readResponse(res, 'Could not load your connections');
+  },
+
+  async getIntegrationStatus(toolkit: string): Promise<{ toolkit: string; connected: boolean }> {
     const res = await fetch(`${API_BASE_URL}/integrations/${toolkit}/status`);
     return readResponse(res, 'Could not check this connection');
   },
@@ -298,7 +335,7 @@ export const api = {
     return readResponse(res, 'Could not confirm this connection');
   },
 
-  async connectIntegration(toolkit: Toolkit): Promise<{ connected: boolean; authorization_url?: string | null }> {
+  async connectIntegration(toolkit: string): Promise<{ connected: boolean; authorization_url?: string | null }> {
     const res = await fetch(`${API_BASE_URL}/integrations/connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

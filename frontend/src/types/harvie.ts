@@ -35,4 +35,7 @@ export interface Integration {
   status: 'connected' | 'idle' | 'error';
   icon: string;
   description: string;
+  toolkit?: string | null;
+  category?: string | null;
+  category_label?: string | null;
 }

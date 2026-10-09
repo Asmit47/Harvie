@@ -2,8 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { Check } from 'lucide-react';
-import { api, type ConnectionCardData, type WorkspaceResponse } from '@/lib/api';
+import { CalendarDays, Check, FileText, FolderOpen, Hash, ListTodo, Mail, Receipt, type LucideIcon } from 'lucide-react';
+import { api, type ConnectionCardData, type Toolkit, type WorkspaceResponse } from '@/lib/api';
 
 interface ConnectionCardProps {
   connection: ConnectionCardData;
@@ -13,18 +13,21 @@ interface ConnectionCardProps {
   onComplete?: (workspace: WorkspaceResponse) => void;
 }
 
-function ConnectorIcon({ toolkit }: { toolkit: ConnectionCardData['toolkit'] }) {
+const CONNECTOR_ICONS: Record<Toolkit, LucideIcon> = {
+  gmail: Mail,
+  googlecalendar: CalendarDays,
+  googledocs: FileText,
+  googledrive: FolderOpen,
+  googletasks: ListTodo,
+  slack: Hash,
+  stripe: Receipt,
+};
+
+function ConnectorIcon({ toolkit }: { toolkit: Toolkit }) {
+  const Icon = CONNECTOR_ICONS[toolkit] ?? Mail;
   return (
     <span className="connection-card-icon" aria-hidden="true">
-      {toolkit === 'gmail' ? (
-        <svg viewBox="0 0 40 32" fill="none">
-          <path d="M4 29V8l8 6v15" stroke="#4285f4" strokeWidth="6" strokeLinejoin="round" />
-          <path d="M28 29V14l8-6v21" stroke="#34a853" strokeWidth="6" strokeLinejoin="round" />
-          <path d="M4 8V3l16 12L36 3v5" stroke="#ea4335" strokeWidth="6" strokeLinejoin="round" />
-          <path d="M4 8V3" stroke="#c5221f" strokeWidth="6" strokeLinecap="round" />
-          <path d="M36 3v5" stroke="#fbbc04" strokeWidth="6" strokeLinecap="round" />
-        </svg>
-      ) : <span className="connection-calendar-icon">31</span>}
+      <Icon size={18} strokeWidth={1.75} />
     </span>
   );
 }
@@ -124,23 +127,27 @@ export function ConnectionCard({ connection, userId, sessionId, confirmationReco
   }
 
   const busy = opening || confirmMutation.isPending;
+  const isConnected = connected && !error;
   return (
     <section className="connection-card" aria-label={`${connection.label} connection`}>
-      <div className="connection-card-heading">
-        <ConnectorIcon toolkit={connection.toolkit} />
-        <div>
-          <strong>{connection.label}</strong>
-          <span>{connection.description}</span>
+      <div className="connection-card-main">
+        <div className="connection-card-heading">
+          <ConnectorIcon toolkit={connection.toolkit} />
+          <div>
+            <strong>{connection.label}</strong>
+            <span>{connection.description}</span>
+          </div>
         </div>
+        <button
+          type="button"
+          className="connection-card-action"
+          data-connected={isConnected ? 'true' : 'false'}
+          onClick={() => void connect()}
+          disabled={busy || isConnected}
+        >
+          {isConnected ? <><Check size={15} />Connected</> : busy ? 'Connecting…' : error && connected ? 'Retry confirmation' : authorizationUrl ? 'Check connection' : 'Connect'}
+        </button>
       </div>
-      <button
-        type="button"
-        className="connection-card-action"
-        onClick={() => void connect()}
-        disabled={busy || (connected && !error)}
-      >
-        {connected && !error ? <><Check size={15} />Connected</> : busy ? 'Connecting…' : error && connected ? 'Retry confirmation' : authorizationUrl ? 'Check connection' : 'Connect'}
-      </button>
       {authorizationUrl && !connected && (
         <div className="flex flex-wrap gap-x-4">
           <a href={authorizationUrl} target="_blank" rel="noopener noreferrer" className="connection-card-link" onClick={() => setWaiting(true)}>Open authorization</a>

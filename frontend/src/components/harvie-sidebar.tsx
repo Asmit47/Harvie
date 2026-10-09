@@ -7,6 +7,7 @@ import { SignOutButton, useUser } from '@clerk/nextjs';
 import { api, type MemoryEntry } from '@/lib/api';
 
 export interface HarvieSidebarProps {
+  activeView?: 'chat' | 'connections' | 'followups';
   onNewChat?: () => void;
   onConnectionsClick?: () => void;
   onFollowupsClick?: () => void;
@@ -18,8 +19,7 @@ const NAV_ITEMS = [
   { label: 'Connections', icon: Workflow, action: 'connections' },
 ] as const;
 
-export function HarvieSidebar({ onNewChat, onConnectionsClick, onFollowupsClick }: HarvieSidebarProps) {
-  const [activeAction, setActiveAction] = useState('chat');
+export function HarvieSidebar({ activeView = 'chat', onNewChat, onConnectionsClick, onFollowupsClick }: HarvieSidebarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -56,11 +56,11 @@ export function HarvieSidebar({ onNewChat, onConnectionsClick, onFollowupsClick 
           <button
             key={action}
             type="button"
-            onClick={() => { setActiveAction(action); actions[action]?.(); }}
+            onClick={() => { actions[action]?.(); }}
             aria-label={label}
             title={label}
-            aria-current={activeAction === action ? 'page' : undefined}
-            className={`group relative grid size-11 place-items-center rounded-[16px] border transition-[color,background,border-color,transform] duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/60 ${activeAction === action ? 'border-white/[0.04] bg-white/[0.09] text-zinc-100' : 'border-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200'}`}
+            aria-current={activeView === action ? 'page' : undefined}
+            className={`group relative grid size-11 place-items-center rounded-[16px] border transition-[color,background,border-color,transform] duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/60 ${activeView === action ? 'border-white/[0.04] bg-white/[0.09] text-zinc-100' : 'border-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200'}`}
           >
             <Icon size={21} strokeWidth={1.65} />
             <span className="pointer-events-none absolute left-[52px] z-[60] translate-x-1 rounded-md border border-white/10 bg-[#1b1b1f] px-2.5 py-1.5 text-[11px] font-medium text-white opacity-0 shadow-xl transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">
