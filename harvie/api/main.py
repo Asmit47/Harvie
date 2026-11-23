@@ -1,5 +1,6 @@
 import hmac
 import logging
+import os
 import re
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,9 @@ from harvie.api.routes import chat, feed, greeting, health, integrations, memory
 from harvie.core.config import settings
 from harvie.core.identity import reset_request_user_id, set_request_user_id
 
+logging.basicConfig(
+    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO),
+)
 logger = logging.getLogger(__name__)
 
 

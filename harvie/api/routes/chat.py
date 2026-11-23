@@ -13,6 +13,7 @@ from harvie.api.routes.session import SessionDetail, create_session, get_session
 from harvie.core.graph import compiled_graph
 from harvie.core.identity import get_request_user_id
 from harvie.core.jev import gate_turn
+from harvie.core.tracing import build_run_config
 from harvie.core.onboarding import WELCOME_SESSION_ID, completion_update, initial_state, normalize_onboarding_stage, plan_reply
 from harvie.core.turns import assistant_turn, user_turn
 from harvie.integrations.catalog import CONNECTORS, Toolkit, connection_card
@@ -384,6 +385,7 @@ def _delegate_work_reply(session_id: str, request: ChatRequest, decision: dict) 
         request.message.strip(),
         origin_session_id=session_id,
         request_id=request.request_id,
+        jev_decision=decision,
     )
     reply = assistant_turn(
         f"On it - I've picked up \"{task['title']}\" and I'm working on it in the background. "
@@ -477,7 +479,14 @@ def chat(request: ChatRequest) -> ChatResponse:
                 graph_input["jev_decision"] = decision
             result = compiled_graph.invoke(
                 None if resume else graph_input,
-                config=get_thread_config(session_id),
+                config=build_run_config(
+                    get_thread_config(session_id)["configurable"]["thread_id"],
+                    lane="chat",
+                    user_id=get_request_user_id() or "",
+                    session_id=session_id,
+                    request_id=request_id,
+                    jev_decision=decision,
+                ),
             )
         except Exception as exc:
             logger.exception("Could not generate a chat reply")

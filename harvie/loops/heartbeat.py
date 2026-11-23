@@ -13,10 +13,13 @@ import json
 import logging
 from datetime import datetime, timezone
 
+from langsmith import tracing_context
+
 from harvie.core.config import settings
 from harvie.core.db import get_db_connection
 from harvie.core.identity import reset_request_user_id, set_request_user_id
 from harvie.core.jev import select_sources
+from harvie.core.tracing import lane_traceable
 from harvie.core.turns import now_iso
 from harvie.memory.feed import create_feed_item
 from harvie.memory.operational import attention_open_loops, create_open_loop
@@ -304,6 +307,7 @@ def _act(user_id: str, item: dict, decision: dict, preferences: dict) -> bool:
     return created is not None
 
 
+@lane_traceable("heartbeat")
 def run_heartbeat_for_user(user_id: str) -> int:
     """One user's checkup. Returns how many feed items were created."""
     persona = get_persona(user_id)
@@ -353,6 +357,7 @@ def run_heartbeat_for_user(user_id: str) -> int:
     return created
 
 
+@lane_traceable("heartbeat")
 def run_heartbeat_sweep() -> int:
     """Heartbeat across every active user."""
     if not settings.LOOP_ENABLED:
@@ -365,7 +370,8 @@ def run_heartbeat_sweep() -> int:
             continue  # a chat turn or task holds the conversation; skip silently
         token = set_request_user_id(user_id)
         try:
-            total += run_heartbeat_for_user(user_id)
+            with tracing_context(tags=["heartbeat"], metadata={"lane": "heartbeat", "user_id": user_id}):
+                total += run_heartbeat_for_user(user_id)
         except Exception:
             logger.info("heartbeat failed for user %s", user_id, exc_info=True)
         finally:

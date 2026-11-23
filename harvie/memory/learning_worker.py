@@ -10,6 +10,7 @@ import threading
 from datetime import datetime, timezone
 
 from harvie.core.identity import reset_request_user_id, set_request_user_id
+from harvie.core.tracing import lane_traceable, lane_tracing_context
 from harvie.core.turns import now_iso
 from harvie.memory.persona_learning import learn_from_turn
 
@@ -41,6 +42,7 @@ def _claim_learning(user_id: str, request_id: str) -> bool:
         return True
 
 
+@lane_traceable("learning")
 def _run(user_id: str, request_id: str, message: str) -> None:
     token = set_request_user_id(user_id)
     try:
@@ -48,10 +50,12 @@ def _run(user_id: str, request_id: str, message: str) -> None:
             return
         learned = learn_from_turn(user_id, message)
         if any(learned.values()):
-            logger.info("learned user_id=%s fields=%s preferences=%s commitments=%s",
-                        user_id, learned["persona_fields"], learned["preferences"], learned["commitments"])
+            logger.info(
+                "lane=learning user_id=%s request_id=%s fields=%s preferences=%s commitments=%s",
+                user_id, request_id, learned["persona_fields"], learned["preferences"], learned["commitments"],
+            )
     except Exception:
-        logger.info("post-turn learning failed user_id=%s", user_id, exc_info=True)
+        logger.info("lane=learning failed user_id=%s request_id=%s", user_id, request_id, exc_info=True)
     finally:
         reset_request_user_id(token)
 
@@ -63,9 +67,13 @@ def spawn_learning(user_id: str, request_id: str, message: str, decision: dict |
     decision = decision or {}
     if not (decision.get("has_preference_signal") or decision.get("has_commitment")):
         return
+
+    def _entry() -> None:
+        with lane_tracing_context("learning", user_id=user_id, request_id=request_id):
+            _run(user_id, request_id, message)
+
     thread = threading.Thread(
-        target=_run,
-        args=(user_id, request_id, message),
+        target=_entry,
         name=f"harvie-learning-{request_id}",
         daemon=True,
     )

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from harvie.core.config import settings
 from harvie.core.identity import reset_request_user_id, set_request_user_id
+from harvie.core.tracing import build_run_config, lane_traceable
 from harvie.memory.feed import create_feed_item
 from harvie.memory.operational import list_open_loops
 from harvie.memory.persona import get_persona, preference_values
@@ -63,18 +64,25 @@ def _digest(user_id: str, material: str) -> str:
 
     preferences = preference_values(user_id)
     try:
-        response = chat_llm.invoke([
-            SystemMessage(
-                content=(
-                    "You write the user's morning briefing for their assistant app. "
-                    "2-5 short bullets: today's schedule first, then what needs attention, "
-                    "then anything Harvie is tracking or working on. No greetings, no filler, "
-                    "no markdown headers. Respect stated preferences: "
-                    f"{preferences or 'none yet'}."
-                )
+        response = chat_llm.invoke(
+            [
+                SystemMessage(
+                    content=(
+                        "You write the user's morning briefing for their assistant app. "
+                        "2-5 short bullets: today's schedule first, then what needs attention, "
+                        "then anything Harvie is tracking or working on. No greetings, no filler, "
+                        "no markdown headers. Respect stated preferences: "
+                        f"{preferences or 'none yet'}."
+                    )
+                ),
+                HumanMessage(content=material[:8000]),
+            ],
+            config=build_run_config(
+                f"{user_id}:briefing",
+                lane="briefing",
+                user_id=user_id,
             ),
-            HumanMessage(content=material[:8000]),
-        ])
+        )
         return str(response.content).strip()
     except Exception:
         logger.info("briefing digest failed user=%s", user_id, exc_info=True)
@@ -106,6 +114,7 @@ def run_briefing_for_user(user_id: str) -> bool:
     return created is not None
 
 
+@lane_traceable("briefing")
 def run_morning_briefing() -> int:
     """Brief every active user around the configured hour (per-user timezone
     refinement is a future preference; the sweep runs once daily)."""

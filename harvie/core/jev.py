@@ -12,8 +12,10 @@ erroring, callers fall back to the deterministic keyword behavior.
 import logging
 from dataclasses import dataclass, field
 
-from harvie.core.config import settings
+from langsmith import traceable
 from typesafe_sdk import RetryPolicy, TypeSafeClient
+
+from harvie.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +94,16 @@ def jev_enabled() -> bool:
     return bool(settings.JEV_ENABLED and settings.TYPESAFE_API_KEY)
 
 
+def _redact_secret_inputs(inputs: dict) -> dict:
+    """Drop credentials so the TypeSafe API key never lands in LangSmith."""
+    return {
+        key: value
+        for key, value in inputs.items()
+        if "api_key" not in key.lower() and "secret" not in key.lower()
+    }
+
+
+@traceable(name="jev.jev_evaluate", run_type="chain", process_inputs=_redact_secret_inputs)
 def jev_evaluate(state: str, questions: dict) -> dict | None:
     """Run one batched Jev evaluation. Returns answers keyed by question name.
 
@@ -160,6 +172,7 @@ def _fallback_decision(user_input: str) -> JevTurnDecision:
     return decision
 
 
+@traceable(name="jev.gate_turn", run_type="chain", process_inputs=_redact_secret_inputs)
 def gate_turn(
     user_input: str,
     *,
@@ -261,6 +274,7 @@ def gate_turn(
     return decision
 
 
+@traceable(name="jev.select_sources", run_type="chain", process_inputs=_redact_secret_inputs)
 def select_sources(
     user_id: str,
     candidate_sources: list[str],

@@ -11,7 +11,9 @@ from typing import Literal, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from harvie.core.identity import get_request_user_id
 from harvie.core.llm import chat_llm
+from harvie.core.tracing import build_run_config
 from harvie.memory.operational import create_open_loop
 from harvie.memory.persona import (
     PERSONA_FIELDS,
@@ -87,11 +89,17 @@ _EXTRACTION_INSTRUCTIONS = (
 
 def _extract(message: str) -> TurnExtraction | None:
     try:
+        user_id = get_request_user_id() or ""
         return chat_llm.with_structured_output(TurnExtraction).invoke(
             [
                 SystemMessage(content=_EXTRACTION_INSTRUCTIONS),
                 HumanMessage(content=message),
-            ]
+            ],
+            config=build_run_config(
+                f"{user_id}:learning" if user_id else "learning",
+                lane="learning",
+                user_id=user_id,
+            ),
         )
     except Exception:
         logger.info("Could not extract learnable facts from this message")

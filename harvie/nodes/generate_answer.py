@@ -1,4 +1,5 @@
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 
 from harvie.core.llm import quick_llm
 from harvie.core.state import HarvieState, _format_list
@@ -102,7 +103,7 @@ def _bound_llm_for_turn(decision: dict | None):
     return bound
 
 
-def generate_answer(state: HarvieState) -> HarvieState:
+def generate_answer(state: HarvieState, config: RunnableConfig) -> HarvieState:
     """Call the tool-bound LLM and preserve tool-call messages when needed."""
     messages = list(state.get("messages") or [])
 
@@ -128,7 +129,7 @@ def generate_answer(state: HarvieState) -> HarvieState:
         ]
 
     llm_with_tools = _bound_llm_for_turn(state.get("jev_decision"))
-    response = llm_with_tools.invoke(messages)
+    response = llm_with_tools.invoke(messages, config=config)
     updated_messages = messages + [response]
 
     raw = response.content

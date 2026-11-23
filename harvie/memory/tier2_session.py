@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -5,6 +6,9 @@ from langgraph.checkpoint.postgres import PostgresSaver
 
 from harvie.core.config import settings
 from harvie.core.db import pool
+from harvie.core.tracing import lane_traceable
+
+logger = logging.getLogger(__name__)
 
 checkpointer = PostgresSaver(pool)
 
@@ -19,6 +23,7 @@ def get_thread_config(session_id: str) -> dict:
     return {"configurable": {"thread_id": f"{settings.HARVIE_USER_ID}:{session_id}"}}
 
 
+@lane_traceable("cleanup")
 def cleanup_expired_sessions() -> None:
     """Delete checkpoint threads older than SESSION_TTL_HOURS."""
     try:
@@ -42,9 +47,9 @@ def cleanup_expired_sessions() -> None:
             return
         for thread_id in expired:
             checkpointer.delete_thread(thread_id)
-        print(f"Cleaned up {len(expired)} expired session threads.")
-    except Exception as exc:
-        print(f"Session cleanup skipped: {exc}")
+        logger.info("Cleaned up %s expired session threads.", len(expired))
+    except Exception:
+        logger.info("Session cleanup skipped", exc_info=True)
 
 
 def get_tier2_context(state: dict) -> str:

@@ -4,8 +4,11 @@ import sys
 from langchain_core.messages import HumanMessage, SystemMessage
 from langsmith import traceable
 
+from harvie.core.config import settings
 from harvie.core.graph import compiled_graph
+from harvie.core.identity import get_request_user_id
 from harvie.core.llm import fallback_llm
+from harvie.core.tracing import build_run_config
 from harvie.integrations.catalog import CONNECTORS, auth_toolkit_name, cli_name
 from harvie.integrations.composio.session import IntegrationError, session_manager
 from harvie.memory.tier2_session import generate_session_id, get_thread_config
@@ -17,7 +20,12 @@ SESSION_ID = generate_session_id()
 def ask_harvie(user_input: str, session_id: str | None = None) -> str:
     """Send a question to Harvie and get the final answer."""
     sid = session_id or SESSION_ID
-    config = get_thread_config(sid)
+    config = build_run_config(
+        get_thread_config(sid)["configurable"]["thread_id"],
+        lane="cli",
+        user_id=get_request_user_id() or settings.HARVIE_USER_ID,
+        session_id=sid,
+    )
     result = compiled_graph.invoke({"user_input": user_input}, config=config)
     return result["final_answer"]
 

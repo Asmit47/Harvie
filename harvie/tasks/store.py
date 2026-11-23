@@ -22,6 +22,7 @@ def create_task(
     *,
     origin_session_id: str | None = None,
     request_id: str | None = None,
+    jev_decision: dict | None = None,
 ) -> dict:
     task_id = uuid.uuid4().hex[:16]
     now = _now()
@@ -31,11 +32,17 @@ def create_task(
                 """
                 INSERT INTO task_runs (
                     id, user_id, title, objective, status, thread_id, progress,
-                    result_summary, origin_session_id, request_id, created_at, updated_at, completed_at
-                ) VALUES (%s, %s, %s, %s, 'queued', '', '[]'::jsonb, NULL, %s, %s, %s, %s, NULL)
+                    result_summary, origin_session_id, request_id, jev_decision,
+                    created_at, updated_at, completed_at
+                ) VALUES (%s, %s, %s, %s, 'queued', '', '[]'::jsonb, NULL, %s, %s, %s::jsonb, %s, %s, NULL)
                 RETURNING *
                 """,
-                (task_id, user_id, title.strip()[:200], objective.strip(), origin_session_id, request_id, now, now),
+                (
+                    task_id, user_id, title.strip()[:200], objective.strip(),
+                    origin_session_id, request_id,
+                    json.dumps(jev_decision) if jev_decision else None,
+                    now, now,
+                ),
             )
             row = cur.fetchone()
             return dict(row) if row else {}

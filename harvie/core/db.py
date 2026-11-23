@@ -135,10 +135,12 @@ def init_db(conninfo: str | None = None) -> None:
                     result_summary TEXT,
                     origin_session_id VARCHAR(128),
                     request_id VARCHAR(100),
+                    jev_decision JSONB,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     completed_at TEXT
                 );
+                ALTER TABLE task_runs ADD COLUMN IF NOT EXISTS jev_decision JSONB;
                 CREATE INDEX IF NOT EXISTS idx_task_runs_user ON task_runs(user_id, status, created_at);
 
                 CREATE TABLE IF NOT EXISTS feed_items (

@@ -9,6 +9,7 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from harvie.core.config import settings
+from harvie.core.tracing import lane_tracing_context
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,16 @@ def _safe(fn):
             return fn(*args, **kwargs)
         except Exception:
             logger.exception("Scheduled job %s failed", getattr(fn, "__name__", fn))
+    wrapped.__name__ = getattr(fn, "__name__", "job")
+    return wrapped
+
+
+def _isolated_lane(lane: str, fn):
+    """Each APScheduler thread starts its own named LangSmith root."""
+    def wrapped(*args, **kwargs):
+        with lane_tracing_context(lane):
+            return fn(*args, **kwargs)
+    wrapped.__name__ = getattr(fn, "__name__", lane)
     return wrapped
 
 
@@ -36,17 +47,17 @@ def start_scheduler() -> BackgroundScheduler | None:
 
     _scheduler = BackgroundScheduler(timezone="UTC")
     _scheduler.add_job(
-        _safe(run_heartbeat_sweep), "interval",
+        _safe(_isolated_lane("heartbeat", run_heartbeat_sweep)), "interval",
         minutes=max(5, settings.LOOP_HEARTBEAT_MINUTES),
         id="heartbeat", max_instances=1, coalesce=True,
     )
     _scheduler.add_job(
-        _safe(run_morning_briefing), "cron",
+        _safe(_isolated_lane("briefing", run_morning_briefing)), "cron",
         hour=max(0, min(23, settings.LOOP_BRIEFING_HOUR)), minute=0,
         id="briefing", max_instances=1, coalesce=True,
     )
     _scheduler.add_job(
-        _safe(cleanup_expired_sessions), "interval",
+        _safe(_isolated_lane("cleanup", cleanup_expired_sessions)), "interval",
         hours=1, id="session-cleanup", max_instances=1, coalesce=True,
     )
     _scheduler.start()

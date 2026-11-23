@@ -17,6 +17,7 @@ from harvie.core.config import settings
 from harvie.core.db import is_pool_open
 from harvie.core.graph import compiled_graph
 from harvie.core.identity import reset_request_user_id, set_request_user_id
+from harvie.core.tracing import build_run_config, lane_traceable, lane_tracing_context
 from harvie.memory.feed import create_feed_item
 from harvie.tasks import store
 
@@ -92,25 +93,27 @@ class TaskWorker:
                     self._pool.submit(self._safe_execute, task)
                     continue  # immediately look for more work
             except Exception:
-                logger.exception("Task dispatch failed")
+                logger.exception("lane=work task dispatch failed")
             self._stop.wait(settings.TASK_WORKER_POLL_SECONDS)
 
     def _safe_execute(self, task: dict) -> None:
-        try:
-            self.execute(task)
-        except Exception:
-            logger.exception("Task %s crashed", task.get("id"))
+        with lane_tracing_context("work", user_id=task.get("user_id"), task_id=task.get("id")):
             try:
-                store.update_task(task["id"], status="failed", completed_at=_iso_now())
-                create_feed_item(
-                    task["user_id"], "task",
-                    f"Task stopped early: {task['title']}",
-                    body="Something went wrong while working on it. Try asking Harvie again.",
-                    priority="low", task_id=task["id"],
-                )
+                self.execute(task)
             except Exception:
-                logger.exception("Could not record failure for task %s", task.get("id"))
+                logger.exception("lane=work task_id=%s crashed", task.get("id"))
+                try:
+                    store.update_task(task["id"], status="failed", completed_at=_iso_now())
+                    create_feed_item(
+                        task["user_id"], "task",
+                        f"Task stopped early: {task['title']}",
+                        body="Something went wrong while working on it. Try asking Harvie again.",
+                        priority="low", task_id=task["id"],
+                    )
+                except Exception:
+                    logger.exception("lane=work task_id=%s could not record failure", task.get("id"))
 
+    @lane_traceable("work")
     def execute(self, task: dict) -> dict:
         task_id = task["id"]
         user_id = task["user_id"]
@@ -119,14 +122,33 @@ class TaskWorker:
         try:
             store.update_task(task_id, thread_id=f"{user_id}:{session_id}")
             store.append_progress(task_id, {"step": "started", "at": _iso_now()})
+            logger.info("lane=work task_id=%s user_id=%s starting", task_id, user_id)
+
+            jev_decision = task.get("jev_decision")
+            if isinstance(jev_decision, str):
+                try:
+                    jev_decision = json.loads(jev_decision)
+                except ValueError:
+                    jev_decision = None
+            graph_input = {
+                "user_input": WORK_DIRECTIVE.format(objective=task["objective"]),
+                "chat_request_id": f"task:{task_id}",
+                "session_id": session_id,
+            }
+            if jev_decision:
+                graph_input["jev_decision"] = jev_decision
 
             result = compiled_graph.invoke(
-                {
-                    "user_input": WORK_DIRECTIVE.format(objective=task["objective"]),
-                    "chat_request_id": f"task:{task_id}",
-                    "session_id": session_id,
-                },
-                config={"configurable": {"thread_id": f"{user_id}:{session_id}"}},
+                graph_input,
+                config=build_run_config(
+                    f"{user_id}:{session_id}",
+                    lane="work",
+                    user_id=user_id,
+                    session_id=session_id,
+                    request_id=task.get("request_id"),
+                    jev_decision=jev_decision,
+                    task_id=task_id,
+                ),
             )
 
             answer = (result.get("final_answer") or result.get("answer") or "").strip()
@@ -141,12 +163,14 @@ class TaskWorker:
                 if created:
                     waiting = True
 
+            status = "waiting_approval" if waiting else "completed"
             store.update_task(
                 task_id,
-                status="waiting_approval" if waiting else "completed",
+                status=status,
                 result_summary=summary[:4000],
                 completed_at=_iso_now(),
             )
+            logger.info("lane=work task_id=%s finished status=%s", task_id, status)
             create_feed_item(
                 user_id, "task",
                 ("Needs your approval: " if waiting else "Done: ") + task["title"],
@@ -211,7 +235,7 @@ def _create_pending_action(user_id: str, task_id: str, proposal: dict) -> dict |
             task_id=task_id,
         )
     except Exception:
-        logger.exception("Could not record proposed action for task %s", task_id)
+        logger.exception("lane=work task_id=%s could not record proposed action", task_id)
         return None
 
 

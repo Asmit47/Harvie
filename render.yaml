@@ -29,6 +29,12 @@ services:
         value: https://api.codiv.ai
       - key: TAVILY_API_KEY
         sync: false
+      - key: LANGSMITH_TRACING
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_PROJECT
+        sync: false
 
 databases:
   - name: harvie-db
