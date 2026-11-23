@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 
@@ -14,6 +14,7 @@ interface HarvieCommandBarProps {
 export function HarvieCommandBar({ sending, onSend, boot = false, placeholder = 'What are we working on?' }: HarvieCommandBarProps) {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const submitGuard = useRef(false);
   const setAgentStatus = useWorkspaceStore((state) => state.setAgentStatus);
 
   useLayoutEffect(() => {
@@ -24,9 +25,14 @@ export function HarvieCommandBar({ sending, onSend, boot = false, placeholder = 
     textarea.style.overflowY = textarea.scrollHeight > 160 ? 'auto' : 'hidden';
   }, [input]);
 
+  useEffect(() => {
+    if (!input.trim()) submitGuard.current = false;
+  }, [input]);
+
   const submit = (message = input) => {
     const command = message.trim();
-    if (!command || sending) return;
+    if (!command || submitGuard.current) return;
+    submitGuard.current = true;
     onSend(command);
     setInput('');
   };
@@ -58,11 +64,10 @@ export function HarvieCommandBar({ sending, onSend, boot = false, placeholder = 
           placeholder={placeholder}
           maxLength={20000}
           autoComplete="off"
-          disabled={sending}
           autoFocus={boot}
         />
         <div className="command-tools">
-          <button type="submit" className="command-submit" aria-label="Send command" disabled={!input.trim() || sending}>
+          <button type="submit" className="command-submit" aria-label="Send command" disabled={!input.trim()}>
             <ArrowUp size={19} strokeWidth={2} />
           </button>
         </div>

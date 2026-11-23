@@ -5,6 +5,13 @@ import { motion, useReducedMotion } from 'framer-motion';
 import type { ConversationTurn, MessageChoice, SessionDetail, WorkspaceResponse } from '@/lib/api';
 import { ConnectionCard } from '@/components/connection-card';
 
+export interface OutboundMessage {
+  localId: string;
+  content: string;
+  requestId: string;
+  status: 'queued' | 'failed';
+}
+
 interface ConversationPanelProps {
   userId: string;
   session?: SessionDetail;
@@ -12,10 +19,13 @@ interface ConversationPanelProps {
   error?: string | null;
   notice?: string | null;
   pendingUserMessage?: string | null;
+  outbound?: OutboundMessage[];
   isThinking?: boolean;
   onSend: (message: string, choice?: MessageChoice) => void;
   onConnectionComplete: (workspace: WorkspaceResponse) => void;
   onRetry?: () => void;
+  onRemoveOutbound?: (localId: string) => void;
+  onRetryOutbound?: (localId: string) => void;
 }
 
 export function ConversationPanel({
@@ -25,10 +35,13 @@ export function ConversationPanel({
   error = null,
   notice = null,
   pendingUserMessage = null,
+  outbound = [],
   isThinking = false,
   onSend,
   onConnectionComplete,
   onRetry,
+  onRemoveOutbound,
+  onRetryOutbound,
 }: ConversationPanelProps) {
   const reduceMotion = useReducedMotion();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -60,6 +73,16 @@ export function ConversationPanel({
   const showPendingUser =
     Boolean(pendingUserMessage) &&
     (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== pendingUserMessage);
+
+  const historyIds = useMemo(() => new Set(history.map((turn) => turn.id).filter(Boolean)), [history]);
+  const failedByTurnId = useMemo(() => {
+    const matches = new Map<string, OutboundMessage>();
+    for (const item of outbound) {
+      if (item.status === 'failed') matches.set(`user:${item.requestId}`, item);
+    }
+    return matches;
+  }, [outbound]);
+  const visibleOutbound = outbound.filter((item) => !historyIds.has(`user:${item.requestId}`));
 
   const displayMessages: ConversationTurn[] = useMemo(() => [
     ...history,
@@ -133,6 +156,15 @@ export function ConversationPanel({
             transition={{ duration: 0.32 }}
           >
             <p>{message.content}</p>
+            {message.id && failedByTurnId.has(message.id) && (
+              <span className="conversation-queue-label">
+                didn't send
+                <button type="button" className="conversation-queue-action" onClick={() => {
+                  const failed = message.id ? failedByTurnId.get(message.id) : undefined;
+                  if (failed) onRetryOutbound?.(failed.localId);
+                }}>Retry</button>
+              </span>
+            )}
             {!!message.connections?.length && (
               <div className="connection-card-group" aria-label="Connect your apps">
                 {message.connections.length > 1 && <h3>Connect your apps</h3>}
@@ -154,13 +186,29 @@ export function ConversationPanel({
                   <button
                     key={choice.id}
                     type="button"
-                    disabled={isThinking || !message.id || (choice.kind === 'onboarding' && choice.stage !== session?.onboarding_stage)}
+                    disabled={!message.id || (choice.kind === 'onboarding' && choice.stage !== session?.onboarding_stage)}
                     onClick={() => onSend(choice.value, { promptId: message.id!, choiceId: choice.id })}
                   >{choice.label}</button>
                 ))}
               </div>
             )}
           </motion.article>
+        ))}
+        {visibleOutbound.map((item) => (
+          <article key={item.localId} className="conversation-message conversation-message-user">
+            <p>{item.content}</p>
+            <span className="conversation-queue-label">
+              {item.status === 'queued' ? 'queued' : "didn't send"}
+              {item.status === 'queued' ? (
+                <button type="button" className="conversation-queue-action" onClick={() => onRemoveOutbound?.(item.localId)}>Remove</button>
+              ) : (
+                <>
+                  <button type="button" className="conversation-queue-action" onClick={() => onRetryOutbound?.(item.localId)}>Retry</button>
+                  <button type="button" className="conversation-queue-action" onClick={() => onRemoveOutbound?.(item.localId)}>Remove</button>
+                </>
+              )}
+            </span>
+          </article>
         ))}
         {(isThinking || isRevealing) && (
           <motion.article
@@ -183,7 +231,7 @@ export function ConversationPanel({
       )}
       {error && <p role="alert" className="conversation-status conversation-status-error">{error}</p>}
       {notice && <p role="alert" className="conversation-status conversation-status-error">{notice}</p>}
-      {onRetry && <button className="conversation-retry" type="button" disabled={isThinking} onClick={onRetry}>Try again</button>}
+      {onRetry && <button className="conversation-retry" type="button" onClick={onRetry}>Try again</button>}
     </section>
   );
 }

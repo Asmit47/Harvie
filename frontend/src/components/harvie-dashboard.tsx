@@ -1,8 +1,8 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useRef, useState } from 'react';
-import { ConversationPanel } from '@/components/conversation-panel';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ConversationPanel, type OutboundMessage } from '@/components/conversation-panel';
 import { HarvieCommandBar } from '@/components/harvie-command-bar';
 import { NucleusShell } from './nucleus-shell';
 import { HarvieSidebar } from '@/components/harvie-sidebar';
@@ -12,6 +12,15 @@ import { api, ApiError, type MessageChoice, type SessionDetail, type WorkspaceRe
 import { ConnectionsPanel } from '@/components/connections-panel';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 
+type QueuedSend = {
+  localId: string;
+  message: string;
+  sessionId: string | null;
+  requestId: string;
+  choice?: MessageChoice;
+  status: 'queued' | 'sending' | 'failed';
+};
+
 export function HarvieDashboard({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const [conversationNotice, setConversationNotice] = useState<string | null>(null);
@@ -20,7 +29,11 @@ export function HarvieDashboard({ userId }: { userId: string }) {
   const [showFeed, setShowFeed] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [failedSend, setFailedSend] = useState<{ message: string; sessionId: string; requestId: string; choice?: MessageChoice } | null>(null);
-  const sendingRef = useRef(false);
+  const [queue, setQueue] = useState<QueuedSend[]>([]);
+  const queueRef = useRef<QueuedSend[]>([]);
+  const inFlightRef = useRef(false);
+  const dispatchedRef = useRef(new Set<string>());
+  const sessionIdRef = useRef<string | undefined>(undefined);
   const setAgentStatus = useWorkspaceStore((state) => state.setAgentStatus);
 
   const workspaceQuery = useQuery({
@@ -32,6 +45,7 @@ export function HarvieDashboard({ userId }: { userId: string }) {
   });
 
   const sessionId = workspaceQuery.data?.session.id;
+  sessionIdRef.current = sessionId;
 
   const activeSessionQuery = useQuery({
     queryKey: ['session', userId, sessionId],
@@ -62,12 +76,17 @@ export function HarvieDashboard({ userId }: { userId: string }) {
     }
   }, [acceptWorkspace, queryClient, userId]);
 
+  const syncQueue = useCallback((next: QueuedSend[]) => {
+    queueRef.current = next;
+    setQueue(next);
+  }, []);
+  const pumpRef = useRef<() => void>(() => {});
+
   const sendMessageMutation = useMutation({
-    mutationFn: ({ message, sessionId, requestId, choice }: { message: string; sessionId: string; requestId: string; choice?: MessageChoice }) => api.sendMessage(message, sessionId, requestId, choice),
+    mutationFn: ({ message, sessionId, requestId, choice }: QueuedSend) => api.sendMessage(message, sessionId || '', requestId, choice),
     onMutate: async ({ message, sessionId, requestId }) => {
       setAgentStatus('thinking');
       setConversationNotice(null);
-      setFailedSend(null);
       setPendingMessage(message);
       await queryClient.cancelQueries({ queryKey: ['session', userId, sessionId] });
       queryClient.setQueryData<SessionDetail>(['session', userId, sessionId], (previous) => {
@@ -78,32 +97,92 @@ export function HarvieDashboard({ userId }: { userId: string }) {
         };
       });
     },
-    onSuccess: (response) => {
+    onSuccess: (response, variables) => {
       acceptWorkspace(response);
+      const nextSessionId = response.session_id;
+      syncQueue(queueRef.current
+        .filter((item) => item.localId !== variables.localId)
+        .map((item) => (
+          nextSessionId && (item.sessionId === variables.sessionId || item.sessionId === 'welcome')
+            ? { ...item, sessionId: nextSessionId }
+            : item
+        )));
+      setFailedSend((current) => current?.requestId === variables.requestId ? null : current);
       void queryClient.invalidateQueries({ queryKey: ['sessions', userId] });
       void queryClient.invalidateQueries({ queryKey: ['feed-unread'] });
     },
     onError: async (error, variables) => {
+      syncQueue(queueRef.current.map((item) => item.localId === variables.localId ? { ...item, status: 'failed' } : item));
       setConversationNotice(error instanceof Error ? error.message : 'I could not reach the agent service.');
-      setFailedSend(error instanceof ApiError && error.status >= 400 && error.status < 500 ? null : variables);
+      setFailedSend(error instanceof ApiError && error.status >= 400 && error.status < 500 ? null : {
+        message: variables.message,
+        sessionId: variables.sessionId || '',
+        requestId: variables.requestId,
+        choice: variables.choice,
+      });
       await queryClient.invalidateQueries({ queryKey: ['session', userId, variables.sessionId] });
     },
     onSettled: () => {
-      sendingRef.current = false;
+      inFlightRef.current = false;
       setAgentStatus('idle');
       setPendingMessage(null);
+      pumpRef.current();
     },
   });
 
-  const sendMessage = useCallback(
-    (message: string, choice?: MessageChoice) => {
-      const command = message.trim();
-      if (!command || !sessionId || sendingRef.current) return;
-      sendingRef.current = true;
-      sendMessageMutation.mutate({ message: command, sessionId, requestId: crypto.randomUUID(), choice });
-    },
-    [sessionId, sendMessageMutation],
-  );
+  const pump = useCallback(() => {
+    if (inFlightRef.current) return;
+    const next = queueRef.current.find((item) => item.status === 'queued' && !dispatchedRef.current.has(item.requestId));
+    if (!next) return;
+    const sid = next.sessionId ?? sessionIdRef.current;
+    if (!sid) return;
+    dispatchedRef.current.add(next.requestId);
+    inFlightRef.current = true;
+    const sending = { ...next, sessionId: sid, status: 'sending' as const };
+    syncQueue(queueRef.current.map((item) => item.localId === next.localId ? sending : item));
+    sendMessageMutation.mutate(sending);
+  }, [sendMessageMutation, syncQueue]);
+  pumpRef.current = pump;
+
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+    pump();
+  }, [pump, sessionId]);
+
+  const enqueue = useCallback((message: string, choice?: MessageChoice, existing?: { requestId: string; sessionId?: string }) => {
+    const command = message.trim();
+    if (!command) return;
+    if (existing?.requestId) dispatchedRef.current.delete(existing.requestId);
+    const item: QueuedSend = {
+      localId: crypto.randomUUID(),
+      message: command,
+      sessionId: existing?.sessionId ?? sessionIdRef.current ?? null,
+      requestId: existing?.requestId ?? crypto.randomUUID(),
+      choice,
+      status: 'queued',
+    };
+    syncQueue([...queueRef.current, item]);
+    pump();
+  }, [pump, syncQueue]);
+
+  const removeQueued = useCallback((localId: string) => {
+    const item = queueRef.current.find((entry) => entry.localId === localId);
+    if (!item || item.status === 'sending') return;
+    dispatchedRef.current.delete(item.requestId);
+    syncQueue(queueRef.current.filter((entry) => entry.localId !== localId));
+  }, [syncQueue]);
+
+  const retryQueued = useCallback((localId: string) => {
+    const item = queueRef.current.find((entry) => entry.localId === localId);
+    if (!item) return;
+    dispatchedRef.current.delete(item.requestId);
+    syncQueue(queueRef.current.map((entry) => entry.localId === localId ? { ...entry, status: 'queued' } : entry));
+    pump();
+  }, [pump, syncQueue]);
+
+  const sendMessage = useCallback((message: string, choice?: MessageChoice) => {
+    enqueue(message, choice);
+  }, [enqueue]);
 
   const session = activeSessionQuery.data ?? workspaceQuery.data?.session;
   const loading = workspaceQuery.isPending || !session;
@@ -137,20 +216,26 @@ export function HarvieDashboard({ userId }: { userId: string }) {
         error={loadError ? 'Could not open your conversation. Try again.' : null}
         notice={conversationNotice ?? (interruptedSend ? 'Your last message is saved without a reply. Try again to continue.' : null)}
         pendingUserMessage={pendingMessage}
+        outbound={queue.filter((item): item is QueuedSend & { status: 'queued' | 'failed' } => item.status !== 'sending').map((item): OutboundMessage => ({
+          localId: item.localId,
+          content: item.message,
+          requestId: item.requestId,
+          status: item.status,
+        }))}
         isThinking={sendMessageMutation.isPending}
         onSend={sendMessage}
         onConnectionComplete={acceptWorkspace}
+        onRemoveOutbound={removeQueued}
+        onRetryOutbound={retryQueued}
         onRetry={loadError ? () => { void workspaceQuery.refetch(); if (sessionId) void activeSessionQuery.refetch(); } : retryableSend ? () => {
-          if (sendingRef.current) return;
-          sendingRef.current = true;
-          sendMessageMutation.mutate(retryableSend);
+          enqueue(retryableSend.message, retryableSend.choice, { requestId: retryableSend.requestId, sessionId: retryableSend.sessionId });
         } : undefined}
       />
       <NucleusShell
         phase="active"
       />
       <HarvieCommandBar
-        sending={sendMessageMutation.isPending || loading || loadError}
+        sending={sendMessageMutation.isPending}
         onSend={sendMessage}
         placeholder={placeholder}
       />

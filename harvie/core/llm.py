@@ -1,8 +1,15 @@
+import logging
+import os
+import sys
+import urllib.error
+import urllib.request
 from typing import Callable
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from harvie.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _build_chat_llm() -> ChatGroq:
@@ -45,6 +52,29 @@ def _build_quick_llm() -> ChatGroq:
     )
 
 
+def _model_label(model) -> str:
+    for attr in ("model_name", "model"):
+        value = getattr(model, attr, None)
+        if isinstance(value, str) and value:
+            return value
+    return type(model).__name__
+
+
+def _note_llm_fallback(primary, fallback, exc: BaseException) -> None:
+    """Log a model switch and tag the active LangSmith run. Never include secrets."""
+    logger.warning(
+        "LLM fallback: primary %s failed (%s); using %s",
+        _model_label(primary),
+        type(exc).__name__,
+        _model_label(fallback),
+    )
+    try:
+        from harvie.core.tracing import annotate_current_run
+        annotate_current_run(llm_fallback_used=True)
+    except Exception:
+        logger.debug("Could not mark LangSmith fallback metadata", exc_info=True)
+
+
 class _LazyBoundLLM:
     def __init__(self, parent: "_LazyLLM", tools):
         self._parent = parent
@@ -67,14 +97,35 @@ class _LazyBoundLLM:
     def invoke(self, *args, **kwargs):
         try:
             return self._get_bound().invoke(*args, **kwargs)
-        except Exception:
+        except Exception as exc:
             fb = self._get_fallback_bound()
-            if fb is not None:
-                return fb.invoke(*args, **kwargs)
-            raise
+            if fb is None:
+                raise
+            _note_llm_fallback(self._parent._get_client(), self._parent._get_fallback_client(), exc)
+            return fb.invoke(*args, **kwargs)
 
     def __getattr__(self, name):
         return getattr(self._get_bound(), name)
+
+
+class _StructuredFallback:
+    """Try the primary structured model, then the fallback model on any error."""
+
+    def __init__(self, parent: "_LazyLLM", schema, kwargs):
+        self._parent = parent
+        self._schema = schema
+        self._kwargs = kwargs
+
+    def invoke(self, *args, **kwargs):
+        primary_client = self._parent._get_client()
+        try:
+            return primary_client.with_structured_output(self._schema, **self._kwargs).invoke(*args, **kwargs)
+        except Exception as exc:
+            fallback_client = self._parent._get_fallback_client()
+            if fallback_client is None:
+                raise
+            _note_llm_fallback(primary_client, fallback_client, exc)
+            return fallback_client.with_structured_output(self._schema, **self._kwargs).invoke(*args, **kwargs)
 
 
 class _LazyLLM:
@@ -104,17 +155,52 @@ class _LazyLLM:
     def bind_tools(self, tools):
         return _LazyBoundLLM(self, tools)
 
+    def with_structured_output(self, schema, **kwargs):
+        return _StructuredFallback(self, schema, kwargs)
+
     def invoke(self, *args, **kwargs):
+        primary = self._get_client()
         try:
-            return self._get_client().invoke(*args, **kwargs)
-        except Exception:
+            return primary.invoke(*args, **kwargs)
+        except Exception as exc:
             fb = self._get_fallback_client()
-            if fb is not None:
-                return fb.invoke(*args, **kwargs)
-            raise
+            if fb is None:
+                raise
+            _note_llm_fallback(primary, fb, exc)
+            return fb.invoke(*args, **kwargs)
 
     def __getattr__(self, name):
         return getattr(self._get_client(), name)
+
+
+def check_groq_api_key() -> None:
+    """Validate the primary Groq key once at startup. Never raises and never logs the key."""
+    if "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
+        return
+    if not settings.GROQ_API_KEY:
+        logger.error("Groq API key invalid - running on Gemini fallback")
+        return
+    request = urllib.request.Request(
+        "https://api.groq.com/openai/v1/models",
+        headers={
+            "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+            "Accept": "application/json",
+            "User-Agent": "harvie/0.1",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            status = getattr(response, "status", 200)
+            if status in (401, 403):
+                logger.error("Groq API key invalid - running on Gemini fallback")
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            logger.error("Groq API key invalid - running on Gemini fallback")
+        else:
+            logger.warning("Groq startup check failed (%s)", type(exc).__name__)
+    except Exception as exc:
+        logger.warning("Groq startup check failed (%s)", type(exc).__name__)
 
 
 chat_llm = _LazyLLM(_build_chat_llm, _build_fallback_llm)

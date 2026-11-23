@@ -7,14 +7,15 @@ import time
 from uuid import uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from langchain_core.messages import SystemMessage
+from langsmith import trace, traceable
 
 from harvie.api.routes.profile import ProfileResponse, profile_response
 from harvie.api.routes.session import SessionDetail, create_session, get_session, list_sessions
 from harvie.core.graph import compiled_graph
 from harvie.core.identity import get_request_user_id
 from harvie.core.jev import gate_turn
-from harvie.core.tracing import build_run_config
 from harvie.core.onboarding import WELCOME_SESSION_ID, completion_update, initial_state, normalize_onboarding_stage, plan_reply
+from harvie.core.tracing import annotate_current_run, build_run_config
 from harvie.core.turns import assistant_turn, user_turn
 from harvie.integrations.catalog import CONNECTORS, Toolkit, connection_card
 from harvie.integrations.composio.session import IntegrationError, session_manager
@@ -353,6 +354,29 @@ def _jev_state_summary(state: dict) -> str:
     return "\n".join(recent)
 
 
+def _message_trace_inputs(inputs: dict) -> dict:
+    request = inputs.get("request")
+    message = getattr(request, "message", None)
+    return {"message": message or ""}
+
+
+def _plan_trace_outputs(plan: dict) -> dict:
+    if not isinstance(plan, dict):
+        return {"answer": ""}
+    turns = plan.get("turns") or []
+    answer = "\n\n".join(turn.get("content", "") for turn in turns if isinstance(turn, dict))
+    outputs = {"answer": answer}
+    if plan.get("task_id"):
+        outputs["task_id"] = plan["task_id"]
+    return outputs
+
+
+@traceable(
+    name="harvie:status_check",
+    run_type="chain",
+    process_inputs=_message_trace_inputs,
+    process_outputs=_plan_trace_outputs,
+)
 def _status_check_reply(request: ChatRequest) -> dict:
     """Deterministic progress answer over tasks and tracked loops - no LLM."""
     tasks = list_tasks(get_request_user_id() or "", include_inactive=False, limit=5)
@@ -375,6 +399,12 @@ def _status_check_reply(request: ChatRequest) -> dict:
     return plan
 
 
+@traceable(
+    name="harvie:delegate_work",
+    run_type="chain",
+    process_inputs=_message_trace_inputs,
+    process_outputs=_plan_trace_outputs,
+)
 def _delegate_work_reply(session_id: str, request: ChatRequest, decision: dict) -> dict:
     """Queue the objective on the work lane and answer immediately."""
     title = request.message.strip()
@@ -399,6 +429,21 @@ def _delegate_work_reply(session_id: str, request: ChatRequest, decision: dict) 
 
 @router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
+    """One LangSmith root per request so gate, graph, status, and delegation nest under it."""
+    with trace(
+        "harvie:chat",
+        run_type="chain",
+        tags=["chat"],
+        inputs={"message": request.message},
+        metadata={"lane": "chat"},
+    ) as run:
+        response = _chat_locked(request)
+        if run is not None:
+            run.end(outputs={"answer": response.answer})
+        return response
+
+
+def _chat_locked(request: ChatRequest) -> ChatResponse:
     with conversation_lock():
         persona = get_persona()
         session_id = request.session_id
@@ -412,6 +457,12 @@ def chat(request: ChatRequest) -> ChatResponse:
             state = write_state(session_id, {"onboarding_stage": "complete"})
 
         request_id = request.request_id or uuid4().hex
+        annotate_current_run(
+            lane="chat",
+            user_id=get_request_user_id() or "",
+            session_id=session_id,
+            request_id=request_id,
+        )
         turn_id = f"user:{request_id}"
         history = list(state.get("conversation_history", []))
         previous = next((turn for turn in history if turn.get("id") == turn_id), None)

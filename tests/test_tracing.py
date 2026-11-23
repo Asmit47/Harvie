@@ -1,5 +1,7 @@
 """LangSmith run-config labels for each Harvie lane."""
 
+import os
+
 from harvie.core.tracing import build_run_config
 
 
@@ -59,3 +61,13 @@ def test_build_run_config_accepts_explicit_none_jev_decision():
     assert config["tags"] == ["cli"]
     assert config["metadata"]["jev_decision"] == {}
     assert config["metadata"]["jev_source"] is None
+
+
+def test_pytest_does_not_write_the_harvie_project():
+    if os.getenv("HARVIE_TEST_TRACING") == "1":
+        assert os.environ["LANGSMITH_PROJECT"] == "harvie-tests"
+        assert os.environ["LANGSMITH_TRACING"].lower() == "true"
+        return
+    assert os.environ["LANGSMITH_TRACING"].lower() == "false"
+    assert os.getenv("LANGCHAIN_TRACING_V2") in (None, "")
+    assert os.getenv("LANGSMITH_TRACING_V2") in (None, "")

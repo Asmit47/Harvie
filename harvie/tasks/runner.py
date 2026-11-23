@@ -9,15 +9,18 @@ and the user approves them from the feed.
 
 import json
 import logging
+import os
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
+
+from langsmith import trace
 
 from harvie.core.config import settings
 from harvie.core.db import is_pool_open
 from harvie.core.graph import compiled_graph
 from harvie.core.identity import reset_request_user_id, set_request_user_id
-from harvie.core.tracing import build_run_config, lane_traceable, lane_tracing_context
+from harvie.core.tracing import build_run_config, flush_traces
 from harvie.memory.feed import create_feed_item
 from harvie.tasks import store
 
@@ -97,23 +100,51 @@ class TaskWorker:
             self._stop.wait(settings.TASK_WORKER_POLL_SECONDS)
 
     def _safe_execute(self, task: dict) -> None:
-        with lane_tracing_context("work", user_id=task.get("user_id"), task_id=task.get("id")):
-            try:
-                self.execute(task)
-            except Exception:
-                logger.exception("lane=work task_id=%s crashed", task.get("id"))
+        # Env vars are process-wide, so this thread sees the same LangSmith project.
+        # parent="ignore" starts a root even if a request trace was copied in.
+        logger.info(
+            "lane=work task_id=%s langsmith_tracing=%s langsmith_project=%s",
+            task.get("id"),
+            os.getenv("LANGSMITH_TRACING") or "",
+            os.getenv("LANGSMITH_PROJECT") or "",
+        )
+        try:
+            with trace(
+                "harvie:work",
+                run_type="chain",
+                parent="ignore",
+                tags=["work"],
+                inputs={"task_id": task.get("id"), "objective": task.get("objective")},
+                metadata={
+                    "lane": "work",
+                    "task_id": task.get("id"),
+                    "user_id": task.get("user_id"),
+                },
+            ) as run:
                 try:
-                    store.update_task(task["id"], status="failed", completed_at=_iso_now())
-                    create_feed_item(
-                        task["user_id"], "task",
-                        f"Task stopped early: {task['title']}",
-                        body="Something went wrong while working on it. Try asking Harvie again.",
-                        priority="low", task_id=task["id"],
-                    )
-                except Exception:
-                    logger.exception("lane=work task_id=%s could not record failure", task.get("id"))
+                    result = self.execute(task)
+                    if run is not None:
+                        run.end(outputs={
+                            "status": (result or {}).get("status"),
+                            "result_summary": str((result or {}).get("result_summary") or "")[:1000],
+                        })
+                except Exception as exc:
+                    if run is not None:
+                        run.end(error=type(exc).__name__)
+                    logger.exception("lane=work task_id=%s crashed", task.get("id"))
+                    try:
+                        store.update_task(task["id"], status="failed", completed_at=_iso_now())
+                        create_feed_item(
+                            task["user_id"], "task",
+                            f"Task stopped early: {task['title']}",
+                            body="Something went wrong while working on it. Try asking Harvie again.",
+                            priority="low", task_id=task["id"],
+                        )
+                    except Exception:
+                        logger.exception("lane=work task_id=%s could not record failure", task.get("id"))
+        finally:
+            flush_traces(timeout=2)
 
-    @lane_traceable("work")
     def execute(self, task: dict) -> dict:
         task_id = task["id"]
         user_id = task["user_id"]

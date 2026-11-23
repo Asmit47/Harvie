@@ -279,6 +279,29 @@ input:focus-visible {
   margin-top: 12px;
 }
 
+.conversation-queue-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: #a1a1aa;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.conversation-queue-action {
+  border: 0;
+  padding: 0;
+  color: #d4d4d8;
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.conversation-queue-action:hover {
+  color: #a3e635;
+}
+
 .connections-stage {
   display: flex;
   flex: 1 1 auto;

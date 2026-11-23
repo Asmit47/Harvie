@@ -101,8 +101,13 @@ def _extract(message: str) -> TurnExtraction | None:
                 user_id=user_id,
             ),
         )
-    except Exception:
-        logger.info("Could not extract learnable facts from this message")
+    except Exception as exc:
+        logger.warning(
+            "Could not extract learnable facts from this message (%s)",
+            type(exc).__name__,
+        )
+        from harvie.core.tracing import mark_current_run_error
+        mark_current_run_error(exc, learning_extract_failed=True)
         return None
 
 

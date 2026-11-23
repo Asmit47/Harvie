@@ -28,6 +28,8 @@ async def lifespan(app: FastAPI):
 
     logger.info("Starting up: initializing database and connection pool...")
     init_db()
+    from harvie.core.llm import check_groq_api_key
+    check_groq_api_key()
     cleanup_expired_sessions()
     if settings.TASK_WORKER_ENABLED:
         task_worker.start()
@@ -39,6 +41,10 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down: stopping background lanes and closing pool...")
     stop_scheduler()
     task_worker.stop()
+    from harvie.core.tracing import flush_traces
+    from harvie.memory.learning_worker import drain_learning
+    drain_learning(timeout=2)
+    flush_traces(timeout=2)
     close_pool()
 
 

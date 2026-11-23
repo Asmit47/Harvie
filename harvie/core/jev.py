@@ -164,7 +164,20 @@ def _fallback_decision(user_input: str) -> JevTurnDecision:
     # keeps pre-Jev behavior where every turn flows through the graph.
     decision.turn_kind = "chat"
     decision.model_tier = "quick" if len(user_input) < 80 and decision.mode in ("chat", "answer") else "deep"
-    decision.has_preference_signal = True
+    # Only obvious preference language should pay for a learning call. Commitments
+    # stay on their own phrases below, so a timeout does not learn from every turn.
+    decision.has_preference_signal = any(hint in lowered for hint in (
+        "i prefer",
+        "i like",
+        "always",
+        "never",
+        "remember",
+        "from now on",
+        "i don't",
+        "i dont",
+        "don't",
+        "dont",
+    ))
     decision.has_commitment = any(
         phrase in lowered
         for phrase in ("remind me", "i'll ", "i will ", "follow up", "by tomorrow", "by friday", "before the")

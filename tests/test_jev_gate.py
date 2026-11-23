@@ -29,6 +29,24 @@ def test_fallback_detects_commitments():
     assert decision.has_commitment is True
 
 
+def test_fallback_does_not_flag_preference_for_hello():
+    decision = _fallback_decision("hello")
+    assert decision.has_preference_signal is False
+    assert decision.has_commitment is False
+
+
+def test_fallback_flags_stated_preferences():
+    decision = _fallback_decision("I prefer short replies from now on")
+    assert decision.has_preference_signal is True
+
+
+def test_gate_turn_fallback_does_not_learn_from_hello(monkeypatch):
+    monkeypatch.setattr("harvie.core.jev.jev_enabled", lambda: False)
+    decision = gate_turn("hello")
+    assert decision.source == "fallback"
+    assert decision.has_preference_signal is False
+
+
 def test_gate_turn_degrades_when_jev_fails(monkeypatch):
     monkeypatch.setattr("harvie.core.jev.jev_evaluate", lambda state, questions: None)
     decision = gate_turn("draft an email to the team")

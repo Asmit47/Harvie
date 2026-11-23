@@ -7,6 +7,7 @@ to the user. Deduplicated per (user, request) via the agent_state KV store.
 
 import logging
 import threading
+import time
 from datetime import datetime, timezone
 
 from harvie.core.identity import reset_request_user_id, set_request_user_id
@@ -15,6 +16,9 @@ from harvie.core.turns import now_iso
 from harvie.memory.persona_learning import learn_from_turn
 
 logger = logging.getLogger(__name__)
+
+_pending_threads: list[threading.Thread] = []
+_pending_lock = threading.Lock()
 
 
 def _claim_learning(user_id: str, request_id: str) -> bool:
@@ -77,4 +81,21 @@ def spawn_learning(user_id: str, request_id: str, message: str, decision: dict |
         name=f"harvie-learning-{request_id}",
         daemon=True,
     )
+    with _pending_lock:
+        _pending_threads.append(thread)
     thread.start()
+
+
+def drain_learning(timeout: float = 2.0) -> None:
+    """Wait briefly for in-flight learning threads, then flush their traces."""
+    deadline = time.monotonic() + timeout
+    with _pending_lock:
+        threads = [thread for thread in _pending_threads if thread.is_alive()]
+        _pending_threads[:] = threads
+    for thread in threads:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        thread.join(remaining)
+    from harvie.core.tracing import flush_traces
+    flush_traces(timeout=max(0.0, deadline - time.monotonic()))
