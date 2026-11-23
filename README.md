@@ -11,6 +11,37 @@ are stored separately in PostgreSQL, so they survive expired chat sessions. The 
 them at `GET/POST /open-loops`, with `PATCH /open-loops/{id}`, and complete/snooze actions.
 Chat responses include separate `attention_items` for deterministic overdue or due-soon loops.
 
+## Agent architecture (v2)
+
+- **Jev gatekeeper** (`harvie/core/jev.py`): every chat turn is gated by the
+  TypeSafe AI System One SDK in one batched call — `openjev-latest` is tried
+  first, then `laya-1.0` if unavailable, followed by deterministic keyword
+  routing if both fail. The gate decides turn kind (chat / background
+  work / status check), intent mode, which app tool groups are relevant, which
+  context sources to load, the model tier (quick vs deep), and whether the turn
+  carries learnable preferences or commitments. Without `TYPESAFE_API_KEY`
+  (or `JEV_ENABLED=false`) Harvie falls back to deterministic keyword gating.
+- **Dual-lane chat/work**: `turn_kind=work` queues a durable `task_runs` row and
+  replies instantly; a background worker executes the objective on its own
+  checkpointer thread while the user keeps chatting. Outbound actions proposed
+  by a task become `pending_actions` and wait for approval — never auto-executed.
+- **Post-turn learning** (`harvie/memory/learning_worker.py`): runs after the
+  response, only when Jev flags a preference signal or commitment. Learns the
+  fixed persona fields, free-form preferences (stored in
+  `persona_profiles.profile.preferences`), and commitments (auto-created open
+  loops), all with the same confirmed/inferred + confidence provenance rules.
+- **Proactive loops** (`harvie/loops/`): an APScheduler heartbeat observes
+  Jev-selected connected sources every `LOOP_HEARTBEAT_MINUTES` (default 30),
+  diffs against `event_snapshots`, and triages with Jev — Harvie's own records
+  (open loops) update automatically; anything touching the outside world
+  becomes a pending action in the feed. Quiet hours and nudge preferences are
+  respected. A daily morning briefing lands in the feed at `LOOP_BRIEFING_HOUR`.
+- **Feed** (`harvie/memory/feed.py`, `/feed`, `/pending-actions`, `/tasks`):
+  the in-app surface for everything proactive — nudges, briefings, task
+  progress, and approval requests with unread badge in the sidebar.
+- **Web search**: `web_search` and `read_page` tools backed by Tavily
+  (`TAVILY_API_KEY`), gated by Jev like every other tool group.
+
 ## Setup
 
 ```bash
@@ -38,6 +69,8 @@ brew services list | grep postgres
 
 
 Fill in `GROQ_API_KEY` for the primary chat model and `GOOGLE_API_KEY` for the Gemini fallback/small-check model. `SUPERMEMORY_API_KEY` is optional; Harvie continues with persona and session memory when it is missing. The default chat model is Groq `openai/gpt-oss-120b`; the default fallback model is `gemini-3.5-flash`.
+
+Set `TYPESAFE_API_KEY` to enable Jev routing (`TYPESAFE_BASE_URL` defaults to `https://api.codiv.ai`) and `TAVILY_API_KEY` to enable web search and page extraction. Both keys are optional; without them Harvie continues without those provider-backed features.
 
 Set `DATABASE_URL` in `.env` to the PostgreSQL database created above:
 
@@ -128,11 +161,13 @@ The direct API endpoints require these proxy headers. The browser UI supplies th
 With the project virtual environment activated:
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
+python -m pytest tests/ -v
 ```
 
-The suite covers API authentication, account isolation, onboarding and retry
-behavior, and PostgreSQL session lifecycle.
+The suite covers the Jev gate (fallback, parsing, tool subsetting), feed and
+pending-action stores, the durable task queue, API authentication and identity
+scoping, preference learning rules, and the learning dedup guard. Tests use a
+real local PostgreSQL; start it first.
 
 #kill the api- lsof -ti :8000 | xargs kill
 
@@ -173,10 +208,13 @@ python -m harvie.entrypoints.cli
 
 ```text
 harvie/
-  core/         config, LLM, state, prompts, graph
-  memory/       persona, session, and knowledge memory tiers
-  nodes/        one LangGraph node per file
-  tools/        tool registry
-  api/          FastAPI app and routes
-  entrypoints/  CLI entrypoint
+  core/          config, LLM, state, prompts, graph, Jev gatekeeper
+  memory/        persona, session, knowledge tiers; feed, pending actions, learning worker
+  nodes/         one LangGraph node per file
+  tools/         tool registry and Jev-driven per-turn tool subsetting
+  tasks/         durable background work queue and runner (the work lane)
+  loops/         heartbeat observer, morning briefing, scheduler
+  integrations/  Composio-backed connectors plus Tavily web search
+  api/           FastAPI app and routes
+  entrypoints/   CLI entrypoint
 ```

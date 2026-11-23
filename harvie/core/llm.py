@@ -33,6 +33,18 @@ def _build_fallback_llm() -> ChatGoogleGenerativeAI:
     )
 
 
+def _build_quick_llm() -> ChatGroq:
+    """Light tier for turns Jev marks as quick: fast and cheap on the same key."""
+    if not settings.GROQ_API_KEY:
+        raise EnvironmentError("GROQ_API_KEY is not set. Check your .env file.")
+    return ChatGroq(
+        model=settings.GROQ_QUICK_LLM_MODEL,
+        temperature=0.2,
+        max_tokens=2048,
+        groq_api_key=settings.GROQ_API_KEY,
+    )
+
+
 class _LazyBoundLLM:
     def __init__(self, parent: "_LazyLLM", tools):
         self._parent = parent
@@ -106,6 +118,7 @@ class _LazyLLM:
 
 
 chat_llm = _LazyLLM(_build_chat_llm, _build_fallback_llm)
+quick_llm = _LazyLLM(_build_quick_llm, _build_fallback_llm)
 fallback_llm = _LazyLLM(_build_fallback_llm)
 
 # Keep the original import path for chat generation and tool binding.

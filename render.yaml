@@ -23,6 +23,12 @@ services:
         sync: false
       - key: HARVIE_ALLOWED_ORIGINS
         sync: false
+      - key: TYPESAFE_API_KEY
+        sync: false
+      - key: TYPESAFE_BASE_URL
+        value: https://api.codiv.ai
+      - key: TAVILY_API_KEY
+        sync: false
 
 databases:
   - name: harvie-db

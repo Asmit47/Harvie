@@ -7,8 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from harvie.api.routes import chat, greeting, health, integrations, memory, open_loops, session
-from harvie.integrations.composio.session import session_manager
+from harvie.api.routes import chat, feed, greeting, health, integrations, memory, open_loops, session, tasks
 from harvie.core.config import settings
 from harvie.core.identity import reset_request_user_id, set_request_user_id
 
@@ -17,16 +16,25 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage connection pool and database schema lifecycle."""
+    """Connection pool, schema, background lanes (tasks + proactive loops)."""
     from harvie.core.db import close_pool, init_db
+    from harvie.loops.scheduler import start_scheduler, stop_scheduler
     from harvie.memory.tier2_session import cleanup_expired_sessions
+    from harvie.tasks.runner import task_worker
 
     logger.info("Starting up: initializing database and connection pool...")
     init_db()
     cleanup_expired_sessions()
+    if settings.TASK_WORKER_ENABLED:
+        task_worker.start()
+    start_scheduler()
+    from harvie.integrations.composio.session import session_manager
+
     session_manager.validate_environment()
     yield
-    logger.info("Shutting down: closing connection pool...")
+    logger.info("Shutting down: stopping background lanes and closing pool...")
+    stop_scheduler()
+    task_worker.stop()
     close_pool()
 
 
@@ -74,6 +82,8 @@ app.include_router(session.router)
 app.include_router(memory.router)
 app.include_router(open_loops.router)
 app.include_router(integrations.router)
+app.include_router(feed.router)
+app.include_router(tasks.router)
 
 
 if __name__ == "__main__":

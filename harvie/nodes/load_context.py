@@ -1,4 +1,5 @@
 from harvie.core.context import build_context
+from harvie.core.jev import gate_turn
 from harvie.core.prompts import build_system_prompt
 from harvie.core.state import HarvieState, _matches_any
 from harvie.core.config import settings
@@ -15,7 +16,18 @@ def load_context(state: HarvieState) -> HarvieState:
     turn = user_turn(user_input, request_id) if request_id else {"role": "user", "content": user_input}
     if not request_id or not any(item.get("id") == turn["id"] for item in history):
         history.append(turn)
-    context = build_context(user_input, {**state, "conversation_history": history})
+
+    # The chat route gates the turn before invoking the graph (it needs the
+    # decision to branch between chat, work, and status); reuse it here.
+    decision = state.get("jev_decision")
+    if not decision:
+        recent = [t.get("content", "") for t in history[-6:]]
+        decision = gate_turn(
+            user_input,
+            session_summary="\n".join(recent[:5]),
+        ).to_state()
+
+    context = build_context(user_input, {**state, "conversation_history": history}, decision)
     guidance = llm_guidance(state.get("onboarding_stage"))
     if guidance:
         context["response_context"]["conversational_welcome"] = guidance
@@ -28,9 +40,10 @@ def load_context(state: HarvieState) -> HarvieState:
         "request_mode": context["mode"],
         "response_context": context["response_context"],
         "attention_items": context["attention_items"],
+        "jev_decision": decision,
         "messages": [],
         "tool_results": [],
         "answer": "",
         "final_answer": "",
-        "daily_checkup_needed": _matches_any(user_input, settings.DAILY_CHECKUP_PHRASES),
+        "daily_checkup_needed": decision.get("checkup") or _matches_any(user_input, settings.DAILY_CHECKUP_PHRASES),
     }

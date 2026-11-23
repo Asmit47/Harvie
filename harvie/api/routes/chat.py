@@ -11,14 +11,18 @@ from langchain_core.messages import SystemMessage
 from harvie.api.routes.profile import ProfileResponse, profile_response
 from harvie.api.routes.session import SessionDetail, create_session, get_session, list_sessions
 from harvie.core.graph import compiled_graph
+from harvie.core.identity import get_request_user_id
+from harvie.core.jev import gate_turn
 from harvie.core.onboarding import WELCOME_SESSION_ID, completion_update, initial_state, normalize_onboarding_stage, plan_reply
 from harvie.core.turns import assistant_turn, user_turn
 from harvie.integrations.catalog import CONNECTORS, Toolkit, connection_card
 from harvie.integrations.composio.session import IntegrationError, session_manager
 from harvie.memory.conversation import conversation_lock, flush_profile_update, read_state, write_state
+from harvie.memory.learning_worker import spawn_learning
 from harvie.memory.persona import get_persona
 from harvie.memory.tier2_session import get_thread_config
-from harvie.memory.persona_learning import learn_persona_from_message
+from harvie.memory.operational import attention_open_loops
+from harvie.tasks.store import create_task, list_tasks
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -110,6 +114,7 @@ class ChatResponse(BaseModel):
     session: SessionDetail
     profile: ProfileResponse
     response_source: str = "llm"
+    task_id: Optional[str] = None
 
 
 def _message_text(message: Any) -> str:
@@ -340,6 +345,56 @@ def _finish_llm_turn(session_id: str, state: dict, request: ChatRequest) -> dict
     return flush_profile_update(session_id, state)
 
 
+def _jev_state_summary(state: dict) -> str:
+    """Cheap context for the gate: recent turns, not the whole session."""
+    history = state.get("conversation_history", []) or []
+    recent = [f"{turn.get('role', 'user')}: {turn.get('content', '')[:200]}" for turn in history[-4:]]
+    return "\n".join(recent)
+
+
+def _status_check_reply(request: ChatRequest) -> dict:
+    """Deterministic progress answer over tasks and tracked loops - no LLM."""
+    tasks = list_tasks(get_request_user_id() or "", include_inactive=False, limit=5)
+    lines = []
+    for task in tasks:
+        status = task["status"].replace("_", " ")
+        summary = (task.get("result_summary") or "").strip()
+        progress = task.get("progress") or []
+        last_step = progress[-1].get("step") if progress else ""
+        detail = summary or last_step or "in progress"
+        lines.append(f"- **{task['title']}** - {status}: {detail[:220]}")
+    due = attention_open_loops()
+    if due:
+        due_lines = ", ".join(loop["title"] for loop in due[:4])
+        lines.append(f"- Due soon: {due_lines}")
+    if not lines:
+        plan = {"turns": [assistant_turn("Nothing in flight right now - no background tasks or due follow-ups.", source="system")]}
+    else:
+        plan = {"turns": [assistant_turn("Here's where things stand:\n" + "\n".join(lines), source="system")]}
+    return plan
+
+
+def _delegate_work_reply(session_id: str, request: ChatRequest, decision: dict) -> dict:
+    """Queue the objective on the work lane and answer immediately."""
+    title = request.message.strip()
+    title = title[0].upper() + title[1:] if title else "Background task"
+    task = create_task(
+        get_request_user_id() or "",
+        title[:80],
+        request.message.strip(),
+        origin_session_id=session_id,
+        request_id=request.request_id,
+    )
+    reply = assistant_turn(
+        f"On it - I've picked up \"{task['title']}\" and I'm working on it in the background. "
+        "Keep chatting whenever you like; ask me 'what's the update' anytime, and I'll flag you here the moment it's done "
+        "(anything that sends or changes things will wait for your approval).",
+        source="system",
+        task_id=task["id"],
+    )
+    return {"turns": [reply], "task_id": task["id"]}
+
+
 @router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     with conversation_lock():
@@ -387,11 +442,41 @@ def chat(request: ChatRequest) -> ChatResponse:
             flush_profile_update(session_id, state)
             return _chat_response(session_id, request, replies)
 
+        # Gate the turn before the graph: Jev decides kind, apps, context, tier.
+        # Onboarding turns always stay on the plain chat path.
+        decision = None
+        if persona["onboarding_complete"]:
+            decision = gate_turn(
+                request.message,
+                session_summary=_jev_state_summary(state),
+                loop_titles=[loop["title"] for loop in (state.get("response_context", {}) or {}).get("relevant_open_loops", [])],
+            ).to_state()
+
+            if decision["turn_kind"] == "work":
+                plan = _delegate_work_reply(session_id, request, decision)
+                replies = [{**turn, "reply_to": turn_id} for turn in plan.pop("turns")]
+                state = write_state(session_id, {**plan, "conversation_history": history + replies})
+                flush_profile_update(session_id, state)
+                response = _chat_response(session_id, request, replies)
+                response.task_id = plan.get("task_id")
+                spawn_learning(get_request_user_id() or "", request_id, request.message, decision)
+                return response
+
+            if decision["turn_kind"] == "status_check":
+                plan = _status_check_reply(request)
+                replies = [{**turn, "reply_to": turn_id} for turn in plan.pop("turns")]
+                state = write_state(session_id, {**plan, "conversation_history": history + replies})
+                flush_profile_update(session_id, state)
+                return _chat_response(session_id, request, replies)
+
         try:
             snapshot = compiled_graph.get_state(get_thread_config(session_id))
             resume = previous and state.get("chat_request_id") == request_id and snapshot.next
+            graph_input = {"user_input": request.message, "chat_request_id": request_id}
+            if decision:
+                graph_input["jev_decision"] = decision
             result = compiled_graph.invoke(
-                None if resume else {"user_input": request.message, "chat_request_id": request_id},
+                None if resume else graph_input,
                 config=get_thread_config(session_id),
             )
         except Exception as exc:
@@ -399,10 +484,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             raise HTTPException(status_code=503, detail="Harvie couldn't reply just now. Your message is saved; try again.") from exc
 
         state = _finish_llm_turn(session_id, dict(result), request)
-        try:
-            learn_persona_from_message(request.message)
-        except Exception:
-            logger.info("Could not save learned persona facts", exc_info=True)
+        spawn_learning(get_request_user_id() or "", request_id, request.message, decision)
         replies = [turn for turn in state.get("conversation_history", []) if turn.get("reply_to") == turn_id]
         return _chat_response(session_id, request, replies, result)
 

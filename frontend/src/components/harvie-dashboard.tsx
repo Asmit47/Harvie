@@ -7,6 +7,7 @@ import { HarvieCommandBar } from '@/components/harvie-command-bar';
 import { NucleusShell } from './nucleus-shell';
 import { HarvieSidebar } from '@/components/harvie-sidebar';
 import { FollowupsPanel } from '@/components/followups-panel';
+import { FeedPanel } from '@/components/feed-panel';
 import { api, ApiError, type MessageChoice, type SessionDetail, type WorkspaceResponse } from '@/lib/api';
 import { ConnectionsPanel } from '@/components/connections-panel';
 import { useWorkspaceStore } from '@/stores/workspace-store';
@@ -16,6 +17,7 @@ export function HarvieDashboard({ userId }: { userId: string }) {
   const [conversationNotice, setConversationNotice] = useState<string | null>(null);
   const [showConnections, setShowConnections] = useState(false);
   const [showFollowups, setShowFollowups] = useState(false);
+  const [showFeed, setShowFeed] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [failedSend, setFailedSend] = useState<{ message: string; sessionId: string; requestId: string; choice?: MessageChoice } | null>(null);
   const sendingRef = useRef(false);
@@ -79,6 +81,7 @@ export function HarvieDashboard({ userId }: { userId: string }) {
     onSuccess: (response) => {
       acceptWorkspace(response);
       void queryClient.invalidateQueries({ queryKey: ['sessions', userId] });
+      void queryClient.invalidateQueries({ queryKey: ['feed-unread'] });
     },
     onError: async (error, variables) => {
       setConversationNotice(error instanceof Error ? error.message : 'I could not reach the agent service.');
@@ -118,12 +121,14 @@ export function HarvieDashboard({ userId }: { userId: string }) {
   return (
     <main className="harvie-workspace">
       <HarvieSidebar
-        activeView={showFollowups ? 'followups' : showConnections ? 'connections' : 'chat'}
+        activeView={showFeed ? 'feed' : showFollowups ? 'followups' : showConnections ? 'connections' : 'chat'}
         onNewChat={() => { if (showConnections) { setShowConnections(false); return; } void createNewChat(); }}
-        onConnectionsClick={() => { setShowFollowups(false); setShowConnections(true); }}
-        onFollowupsClick={() => setShowFollowups(true)}
+        onConnectionsClick={() => { setShowFollowups(false); setShowFeed(false); setShowConnections(true); }}
+        onFollowupsClick={() => { setShowConnections(false); setShowFeed(false); setShowFollowups(true); }}
+        onFeedClick={() => { setShowConnections(false); setShowFollowups(false); setShowFeed(true); }}
       />
       {showFollowups && <FollowupsPanel userId={userId} onClose={() => setShowFollowups(false)} />}
+      {showFeed && <FeedPanel userId={userId} onClose={() => setShowFeed(false)} />}
       {showConnections ? <ConnectionsPanel userId={userId} onClose={() => setShowConnections(false)} /> : <>
       <ConversationPanel
         userId={userId}

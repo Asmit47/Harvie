@@ -11,6 +11,7 @@ class HarvieState(TypedDict, total=False):
     request_mode: str
     response_context: dict
     attention_items: List[dict]
+    jev_decision: dict
 
     # Tier 2, persisted by checkpointer
     conversation_history: List[dict]

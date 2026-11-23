@@ -67,12 +67,35 @@ class Settings:
         _env("COMPOSIO_CACHE_DIR", "") or str(PROJECT_ROOT / "data" / "composio-cache")
     )
     GROQ_LLM_MODEL: str = _env("GROQ_LLM_MODEL", "openai/gpt-oss-120b")
+    GROQ_QUICK_LLM_MODEL: str = _env("GROQ_QUICK_LLM_MODEL", "openai/gpt-oss-20b")
     GOOGLE_LLM_MODEL: str = _env("GOOGLE_LLM_MODEL", "gemini-3.5-flash")
     NVIDIA_BASE_URL: str = (
         _env("NVIDIA_BASE_URL")
         or _env("NVIDIA_NIM_BASE_URL")
         or ""
     )
+
+    # Jev gatekeeper (TypeSafe AI System One model) for fast typed routing decisions.
+    TYPESAFE_API_KEY: str = _env("TYPESAFE_API_KEY", "")
+    TYPESAFE_BASE_URL: str = _env("TYPESAFE_BASE_URL", "https://api.codiv.ai").rstrip("/")
+    JEV_MODEL: str = _env("JEV_MODEL", "openjev-latest")
+    JEV_FALLBACK_MODEL: str = _env("JEV_FALLBACK_MODEL", "laya-1.0")
+    JEV_ENABLED: bool = _env("JEV_ENABLED", "true").lower() != "false"
+    JEV_TIMEOUT_SECONDS: float = float(_env("JEV_TIMEOUT_SECONDS", "2") or 2)
+
+    # Background work tasks (the work lane).
+    TASK_WORKER_ENABLED: bool = _env("TASK_WORKER_ENABLED", "true").lower() != "false"
+    TASK_WORKER_POLL_SECONDS: int = _env_int("TASK_WORKER_POLL_SECONDS", 5)
+    TASK_MAX_CONCURRENT: int = _env_int("TASK_MAX_CONCURRENT", 2)
+
+    # Proactive loops.
+    LOOP_ENABLED: bool = _env("LOOP_ENABLED", "true").lower() != "false"
+    LOOP_HEARTBEAT_MINUTES: int = _env_int("LOOP_HEARTBEAT_MINUTES", 30)
+    LOOP_BRIEFING_HOUR: int = _env_int("LOOP_BRIEFING_HOUR", 7)
+    LOOP_ACTIVE_USER_DAYS: int = _env_int("LOOP_ACTIVE_USER_DAYS", 14)
+
+    # Web search and page extraction (Tavily).
+    TAVILY_API_KEY: str = _env("TAVILY_API_KEY", "")
 
 
 settings = Settings()

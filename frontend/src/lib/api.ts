@@ -13,6 +13,7 @@ export interface ChatApiResponse {
   session: SessionDetail;
   profile: PersonaProfile;
   response_source: 'onboarding' | 'llm' | 'system';
+  task_id?: string | null;
 }
 
 export type Toolkit =
@@ -126,6 +127,49 @@ export interface IntegrationsApiResponse {
 export interface GreetingResponse {
   period: string;
   greeting: string;
+}
+
+export interface FeedItem {
+  id: string;
+  kind: 'nudge' | 'briefing' | 'alert' | 'update' | 'task' | string;
+  title: string;
+  body: string;
+  priority: 'low' | 'medium' | 'high' | string;
+  data: Record<string, unknown>;
+  open_loop_id?: string | null;
+  task_id?: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+export interface FeedResponse {
+  items: FeedItem[];
+  unread_count: number;
+}
+
+export interface PendingAction {
+  id: string;
+  kind: string;
+  app: string;
+  tool: string;
+  arguments: Record<string, unknown>;
+  status: 'pending' | 'approved' | 'rejected' | 'expired' | string;
+  source: string;
+  task_id?: string | null;
+  result?: string | null;
+  created_at: string;
+}
+
+export interface WorkTask {
+  id: string;
+  title: string;
+  objective: string;
+  status: 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | string;
+  progress: { step: string; at?: string }[];
+  result_summary?: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string | null;
 }
 
 export interface PersonaProfile {
@@ -294,6 +338,55 @@ export const api = {
   async completeOpenLoop(id: string): Promise<void> {
     const res = await fetch(`${API_BASE_URL}/open-loops/${encodeURIComponent(id)}/complete`, { method: 'POST' });
     if (!res.ok) throw new ApiError('Could not complete this follow-up', res.status);
+  },
+
+  async getFeed(includeRead = false): Promise<FeedResponse> {
+    const res = await fetch(`${API_BASE_URL}/feed?include_read=${includeRead ? 'true' : 'false'}`);
+    return readResponse(res, 'Could not load your feed');
+  },
+
+  async markFeedRead(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/feed/${encodeURIComponent(id)}/read`, { method: 'POST' });
+    if (!res.ok) throw new ApiError('Could not mark this read', res.status);
+  },
+
+  async markAllFeedRead(): Promise<{ marked_read: number }> {
+    const res = await fetch(`${API_BASE_URL}/feed/read-all`, { method: 'POST' });
+    return readResponse(res, 'Could not mark everything read');
+  },
+
+  async getPendingActions(): Promise<PendingAction[]> {
+    const res = await fetch(`${API_BASE_URL}/pending-actions`);
+    return readResponse(res, 'Could not load pending actions');
+  },
+
+  async approvePendingAction(id: string): Promise<PendingAction> {
+    const res = await fetch(`${API_BASE_URL}/pending-actions/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+    return readResponse(res, 'Could not approve this action');
+  },
+
+  async rejectPendingAction(id: string): Promise<PendingAction> {
+    const res = await fetch(`${API_BASE_URL}/pending-actions/${encodeURIComponent(id)}/reject`, { method: 'POST' });
+    return readResponse(res, 'Could not reject this action');
+  },
+
+  async editPendingAction(id: string, args: Record<string, unknown>): Promise<PendingAction> {
+    const res = await fetch(`${API_BASE_URL}/pending-actions/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ arguments: args }),
+    });
+    return readResponse(res, 'Could not update this action');
+  },
+
+  async getTasks(includeAll = false): Promise<WorkTask[]> {
+    const res = await fetch(`${API_BASE_URL}/tasks?include_all=${includeAll ? 'true' : 'false'}`);
+    return readResponse(res, 'Could not load background tasks');
+  },
+
+  async cancelTask(id: string): Promise<WorkTask> {
+    const res = await fetch(`${API_BASE_URL}/tasks/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
+    return readResponse(res, 'Could not cancel this task');
   },
 
   async getIntegrations(): Promise<IntegrationsApiResponse> {

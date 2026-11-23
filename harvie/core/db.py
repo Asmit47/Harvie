@@ -123,6 +123,59 @@ def init_db(conninfo: str | None = None) -> None:
                     expires_at TEXT,
                     UNIQUE(user_id, provider, external_id)
                 );
+
+                CREATE TABLE IF NOT EXISTS task_runs (
+                    id VARCHAR(64) PRIMARY KEY,
+                    user_id VARCHAR(128) NOT NULL,
+                    title TEXT NOT NULL,
+                    objective TEXT NOT NULL,
+                    status VARCHAR(32) NOT NULL DEFAULT 'queued',
+                    thread_id TEXT NOT NULL DEFAULT '',
+                    progress JSONB NOT NULL DEFAULT '[]'::jsonb,
+                    result_summary TEXT,
+                    origin_session_id VARCHAR(128),
+                    request_id VARCHAR(100),
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    completed_at TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_task_runs_user ON task_runs(user_id, status, created_at);
+
+                CREATE TABLE IF NOT EXISTS feed_items (
+                    id VARCHAR(64) PRIMARY KEY,
+                    user_id VARCHAR(128) NOT NULL,
+                    kind VARCHAR(32) NOT NULL,
+                    title TEXT NOT NULL,
+                    body TEXT NOT NULL DEFAULT '',
+                    priority VARCHAR(16) NOT NULL DEFAULT 'medium',
+                    data JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    dedup_key VARCHAR(255),
+                    open_loop_id VARCHAR(64),
+                    task_id VARCHAR(64),
+                    read_at TEXT,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_feed_user ON feed_items(user_id, read_at, created_at);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_feed_dedup
+                    ON feed_items(user_id, dedup_key) WHERE dedup_key IS NOT NULL;
+
+                CREATE TABLE IF NOT EXISTS pending_actions (
+                    id VARCHAR(64) PRIMARY KEY,
+                    user_id VARCHAR(128) NOT NULL,
+                    kind VARCHAR(64) NOT NULL,
+                    app VARCHAR(64),
+                    tool VARCHAR(255) NOT NULL DEFAULT '',
+                    arguments JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+                    source VARCHAR(32) NOT NULL DEFAULT 'task',
+                    task_id VARCHAR(64),
+                    feed_item_id VARCHAR(64),
+                    result TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    decided_at TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_pending_actions_user ON pending_actions(user_id, status, created_at);
                 """
             )
 

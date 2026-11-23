@@ -1,29 +1,40 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Blocks, Brain, Check, Clock3, Home, LogOut, Settings2, Workflow, X } from 'lucide-react';
+import { Bell, Blocks, Brain, Check, Clock3, Home, LogOut, Settings2, Workflow, X } from 'lucide-react';
 import { SignOutButton, useUser } from '@clerk/nextjs';
 import { api, type MemoryEntry } from '@/lib/api';
 
 export interface HarvieSidebarProps {
-  activeView?: 'chat' | 'connections' | 'followups';
+  activeView?: 'chat' | 'connections' | 'followups' | 'feed';
   onNewChat?: () => void;
   onConnectionsClick?: () => void;
   onFollowupsClick?: () => void;
+  onFeedClick?: () => void;
 }
 
 const NAV_ITEMS = [
   { label: 'Home', icon: Home, action: 'chat' },
   { label: 'Tasks', icon: Clock3, action: 'followups' },
+  { label: 'Notices', icon: Bell, action: 'feed' },
   { label: 'Connections', icon: Workflow, action: 'connections' },
 ] as const;
 
-export function HarvieSidebar({ activeView = 'chat', onNewChat, onConnectionsClick, onFollowupsClick }: HarvieSidebarProps) {
+export function HarvieSidebar({ activeView = 'chat', onNewChat, onConnectionsClick, onFollowupsClick, onFeedClick }: HarvieSidebarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const { user, isLoaded } = useUser();
+
+  const unreadQuery = useQuery({
+    queryKey: ['feed-unread'],
+    queryFn: () => api.getFeed(false),
+    refetchInterval: 60_000,
+    retry: 1,
+  });
+  const unreadCount = unreadQuery.data?.unread_count ?? 0;
 
   useEffect(() => {
     if (!settingsOpen && !memoryOpen) return;
@@ -46,6 +57,7 @@ export function HarvieSidebar({ activeView = 'chat', onNewChat, onConnectionsCli
   const actions = {
     chat: onNewChat,
     followups: onFollowupsClick,
+    feed: onFeedClick,
     connections: onConnectionsClick,
   };
 
@@ -63,6 +75,11 @@ export function HarvieSidebar({ activeView = 'chat', onNewChat, onConnectionsCli
             className={`group relative grid size-11 place-items-center rounded-[16px] border transition-[color,background,border-color,transform] duration-150 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/60 ${activeView === action ? 'border-white/[0.04] bg-white/[0.09] text-zinc-100' : 'border-transparent text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200'}`}
           >
             <Icon size={21} strokeWidth={1.65} />
+            {action === 'feed' && unreadCount > 0 && (
+              <span className="absolute right-1.5 top-1.5 grid min-w-[16px] place-items-center rounded-full bg-lime-300 px-1 text-[9px] font-semibold leading-4 text-zinc-950">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
             <span className="pointer-events-none absolute left-[52px] z-[60] translate-x-1 rounded-md border border-white/10 bg-[#1b1b1f] px-2.5 py-1.5 text-[11px] font-medium text-white opacity-0 shadow-xl transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">
               {label}
             </span>

@@ -1,7 +1,9 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from harvie.core.llm import quick_llm
 from harvie.core.state import HarvieState, _format_list
-from harvie.tools import llm_with_tools
+from harvie.tools import tools_for_decision
+from harvie.core.llm import llm
 
 HARVIE_SYSTEM_PROMPT = """
 You are Harvie - the user's sharp, human assistant. Talk like a real person, not a bot.
@@ -72,12 +74,32 @@ OTHER CONNECTED APPS:
 - For apps beyond the ones above (Notion, GitHub, HubSpot, and so on), call connected_apps_list, then connected_app_find_tools, then connected_app_run_tool.
 - Only use an exact tool slug returned by connected_app_find_tools. Reading is fine; confirm the exact change with the user before creating, editing, sending, or deleting anything.
 
+WEB SEARCH:
+- Use web_search for current information, anything after your training cutoff, or facts you're unsure about. Cite the source link when it matters.
+- Use read_page when a result's snippet isn't enough. Keep quoted excerpts short.
+
 PERSONALIZATION:
 - Use the identity and preferences in the context below.
 - If a saved assistant name is present, use it as your name instead of Harvie.
 - Address the user by name only when it feels natural (not every message).
 - No hedging, no motivational filler, no sugar-coating.
 """.strip()
+
+_BOUND_CACHE: dict = {}
+
+
+def _bound_llm_for_turn(decision: dict | None):
+    """Bind the tier-appropriate model to this turn's tool subset, cached."""
+    decision = decision or {}
+    tier = decision.get("model_tier", "deep")
+    tools = tools_for_decision(decision)
+    key = (tier, tuple(sorted(tool.name for tool in tools)))
+    bound = _BOUND_CACHE.get(key)
+    if bound is None:
+        base = quick_llm if tier == "quick" else llm
+        bound = base.bind_tools(tools)
+        _BOUND_CACHE[key] = bound
+    return bound
 
 
 def generate_answer(state: HarvieState) -> HarvieState:
@@ -105,6 +127,7 @@ def generate_answer(state: HarvieState) -> HarvieState:
             HumanMessage(content=state["user_input"]),
         ]
 
+    llm_with_tools = _bound_llm_for_turn(state.get("jev_decision"))
     response = llm_with_tools.invoke(messages)
     updated_messages = messages + [response]
 

@@ -53,13 +53,20 @@ def _normalize_profile(data: dict | None, updated_at: str | None = None) -> dict
             }
         else:
             profile[key] = _unknown_field()
+    # Free-form learned preferences live alongside the fixed fields, with the
+    # same provenance shape: {key: {value, status, source, confidence, updated_at}}.
+    preferences = raw.get("preferences")
+    profile["preferences"] = {
+        key: entry for key, entry in (preferences or {}).items()
+        if isinstance(entry, dict) and entry.get("value") is not None
+    }
     return profile
 
 
 def persona_values(profile: dict | None = None) -> dict:
     """Return just known values for the assistant's context."""
     fields = _normalize_profile(profile)
-    return {key: field["value"] for key, field in fields.items() if field["value"] is not None}
+    return {key: field["value"] for key, field in fields.items() if key != "preferences" and field["value"] is not None}
 
 
 def get_persona(user_id: str | None = None) -> dict:
@@ -136,3 +143,62 @@ def update_persona(
                 ),
             )
     return get_persona(uid)
+
+
+def _save_profile(uid: str, profile: dict) -> None:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO persona_profiles (user_id, profile, onboarding_complete, onboarding_step)
+                VALUES (%s, %s::jsonb, FALSE, 0)
+                ON CONFLICT (user_id) DO UPDATE SET
+                    profile = EXCLUDED.profile,
+                    updated_at = NOW()
+                """,
+                (uid, json.dumps(profile)),
+            )
+
+
+def get_preferences(user_id: str | None = None) -> dict[str, dict]:
+    """Free-form learned preferences: {key: {value, status, source, confidence, updated_at}}."""
+    return get_persona(user_id)["profile"].get("preferences", {})
+
+
+def preference_values(user_id: str | None = None) -> dict[str, str]:
+    """Flattened preference values, e.g. {'proactive.quiet_hours': '22:00-08:00'}."""
+    return {key: entry.get("value") for key, entry in get_preferences(user_id).items() if entry.get("value") is not None}
+
+
+def update_preferences(entries: dict[str, dict], user_id: str | None = None, *, source: str = "conversation") -> dict:
+    """Merge learned preference entries under the same provenance rules as
+    persona fields: inferred never overwrites confirmed, confidence is kept."""
+    uid = user_id or settings.HARVIE_USER_ID
+    if not uid:
+        raise ValueError("An authenticated user is required to update preferences.")
+    timestamp = datetime.now(timezone.utc).isoformat()
+    current = get_persona(uid)["profile"]
+    preferences = dict(current.get("preferences", {}))
+    for key, entry in entries.items():
+        if not isinstance(entry, dict) or entry.get("value") in (None, ""):
+            continue
+        clean_key = key.strip().lower().replace(" ", "_")[:64]
+        if not clean_key:
+            continue
+        old = preferences.get(clean_key)
+        status = entry.get("status") if entry.get("status") in ("confirmed", "inferred") else "inferred"
+        try:
+            confidence = max(0.0, min(float(entry.get("confidence", 0.8)), 1.0))
+        except (TypeError, ValueError):
+            confidence = 0.8
+        if old and old.get("status") == "confirmed" and status == "inferred":
+            continue
+        preferences[clean_key] = {
+            "value": entry["value"],
+            "status": status,
+            "source": source,
+            "confidence": confidence,
+            "updated_at": timestamp,
+        }
+    _save_profile(uid, {**current, "preferences": preferences})
+    return preferences
