@@ -34,6 +34,7 @@ memory/
 .DS_Store
 
 # Local Codex agent state and installed skill copies
+.cursor/
 .agents/
 __agent__/
 skills-lock.json

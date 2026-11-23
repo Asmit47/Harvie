@@ -189,7 +189,9 @@ def list_sessions() -> list[SessionSummary]:
     sessions: list[SessionSummary] = []
     for thread_id, (created_at, updated_at) in _latest_checkpoint_times().items():
         session_id = _session_id_from_thread_id(thread_id)
-        if not session_id:
+        if not session_id or session_id.startswith("task-"):
+            # Work-lane checkpoints are not conversations. Resuming one shows the
+            # internal task prompt and a retry id the chat API rejects.
             continue
         state = _get_state(session_id) or {}
         sessions.append(_to_summary(session_id, state, created_at, updated_at))

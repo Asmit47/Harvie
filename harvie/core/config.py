@@ -6,8 +6,9 @@ from dotenv import load_dotenv
 from harvie.core.identity import get_request_user_id
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-load_dotenv(dotenv_path=PROJECT_ROOT / ".env.render")
-load_dotenv(dotenv_path=PROJECT_ROOT / ".env")
+# Local config lives in .env. Render sets the same names on the service, and
+# override keeps a stale shell or previously loaded value from winning.
+load_dotenv(dotenv_path=PROJECT_ROOT / ".env", override=True)
 
 
 def _env(key: str, default: str = "") -> str:
